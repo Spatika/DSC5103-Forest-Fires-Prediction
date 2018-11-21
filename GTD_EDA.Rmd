@@ -1,0 +1,176 @@
+---
+title: "DSC5103 Final Project: Global Terrorism Database"
+subtitle: 'Exploratory Data Analysis and Prediction of Terrorist Group'
+author: "Section A1 Group 10"
+date: "Oct 2018"
+output:
+  html_document:
+    highlight: tango
+    theme: yeti
+---
+<!--
+comments must be put in an HTML comment form
+-->
+
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 100)  # set output width, turn off scientific notation for big numbers
+# knitr::opts_chunk$set(echo = TRUE) # include=FALSE
+```
+
+## Introduction
+In this project, we will be studying the Global Terrorism Database (source/cite). GTD covers over 180,000 terrorist attacks from 1970 to 2017 with over 120,000 data points. We also have an auxiliary database of ISIL (Islamic State of Iraq and Levant) attacks from 2002 to 2016 derived from GTD. These attacks are classified on the basis of the type of relationships the perps had with ISIL. The GTD is from the National Consortium for the Study of Terrorism and Responses to Terrorism (START).
+
+### Data Sources
+
+1. https://www.kaggle.com/START-UMD/gtd
+2. https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/KNERY9
+
+### Problem 
+
+We will be studying the following problem(s):
+
+* Predict whether a terrorist attack will result in casualties/not (binary classification, by transforming the continuous target variable).
+    + Could be possibly be imbalanced problem.
+    + Recall is important metric (we care more about maximizing the true positives and reducing our false negatives).
+* Predict the terrorist group to which a particular terrorist act can be attributed (multi-class classification).
+    + Groups with low frequency can be grouped together as "Others" to avoid data imbalance. 
+* Predicting the attack type - hijacking/bombing/assassination.
+* Predicting attack region.
+
+### Evaluation Metrics
+
+Need to do some work on which one would be appropriate based on problem outlined above.
+
+* Classification - recall, overall accuracy, AUC/ROC
+* Bingo Classification Accuracy?
+* 1-Away Classification Accuracy? 
+
+## Motivation
+Spin some stuff on why this work is important, and why we chose it.
+
+## Literature Review
+The GTD has been studied extensively, especially for exploration and visualization on Kaggle. However, the frame of reference for our classification problem is work by *Tolan, G. M., & Soliman, O. S. (2015)*, and *Gohar, F., Butt, W. H., & Qamar, U. (2014)*.
+
+Kaggle:
+
+1. Casualty/Not: https://www.kaggle.com/mm5631/eda-predicting-casualties-in-terror-attacks?scriptVersionId=1270259
+2. Which Group: https://github.com/kartik-joshi/GTD-Classifier
+
+## Exploratory Data Analysis
+We did some initial EDA and visualization to get an idea of our next steps: the required data pre-processing and balancing, and some hints on possible feature engineering. 
+
+### Schema
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+
+# load data
+data <- read.csv(file = "globalterrorismdb_0718dist.csv", row.names = 1, stringsAsFactors = FALSE)
+
+summary(data)
+str(data)
+head(data)
+```
+
+### Distribution of Target Class
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+
+```
+
+### Some Viz
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+
+```
+
+## Data Preparation
+
+Some cleaning is necessary because there are NAs and also several categorical variables stored as numerical.
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# clean the NA's
+# heart <- na.omit(heart)
+# # convert to factors
+# heart$Sex <- as.factor(heart$Sex)
+# heart$Fbs <- as.factor(heart$Fbs)
+# heart$RestECG <- as.factor(heart$RestECG)
+# heart$ExAng <- as.factor(heart$ExAng)
+# heart$Slope <- as.factor(heart$Slope)
+# heart$Ca <- as.factor(heart$Ca)
+# summary(heart)
+```
+
+### Train-Validation Split
+Next, we will prepare the training and test dataset, as well as the 10 CV folds, for later model comparison.
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# split training and test data 50/50
+# N <- nrow(heart)
+# set.seed(456)
+# train.index <- sample(1:N, round(N/2))
+# test.index <- - train.index
+```
+
+Let's separate the test data for GBM use.
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+
+## Feature Engineering/Creation
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+## Modelling
+
+1. Elastic Net
+```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+2. Random Forest
+```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+3. XGBoost
+```{r xgboost, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+4. Ensemble 
+```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+## Results and Model Comparison
+* Relevant plots, tables, discussions
+
+## Insights
+* Variable importance plots, other interpretations.
+
+## Conclusion
+* Limitations, scope for improvement
+* Network-based inference to predict targets of terrorism (Campedelli, G. M., Cruickshank, I., & Carley, K. M. (2018, July)
+* Future attack prediction using ARIMA/Time Series
+* Happiness score (?)
+
+## References
+In proper APA/MLA format.
+
+1. Tolan, G. M., & Soliman, O. S. (2015). An Experimental Study of Classification Algorithms for Terrorism Prediction. International Journal of Knowledge Engineering-IACSIT, 1(2), 107-112. (https://www.researchgate.net/profile/Ghada_Tolan/publication/280580671_An_Experimental_Study_of_Classification_Algorithms_for_Terrorism_Prediction/links/55c3cf2d08aea2d9bdc1c747/An-Experimental-Study-of-Classification-Algorithms-for-Terrorism-Prediction.pdf)
+
+2. Gohar, F., Butt, W. H., & Qamar, U. (2014). Terrorist Group Prediction Using Data Classification. In Work. MultiRelational Data Min. MRDM2003 (Vol. 10, pp. 199-208). (https://s3.amazonaws.com/academia.edu.documents/35602120/140.pdf?AWSAccessKeyId=AKIAIWOWYYGZ2Y53UL3A&Expires=1542767152&Signature=TCMwxsYrWfO2diiE5DaUnM%2B5ruA%3D&response-content-disposition=inline%3B%20filename%3DTerrorist_Group_Prediction_Using_Data_Cl.pdf)
+
+3. Shafiq, S., Butt, W. H., & Qamar, U. (2014, December). Attack type prediction using hybrid classifier. In International Conference on Advanced Data Mining and Applications (pp. 488-498). Springer, Cham. (https://link.springer.com/chapter/10.1007/978-3-319-14717-8_38)
+
+4. Chaman Verma, et al. (2018). Predictive Modeling of Terrorist Attacks Using Machine Learning. International Journal of Pure and Applied Mathematics. (https://acadpubl.eu/hub/2018-119-15/4/630.pdf)
+
+5. Campedelli, G. M., Cruickshank, I., & Carley, K. M. (2018, July). Complex Networks for Terrorist Target Prediction. In International Conference on Social Computing, Behavioral-Cultural Modeling and Prediction and Behavior Representation in Modeling and Simulation (pp. 348-353). Springer, Cham.(https://link.springer.com/chapter/10.1007/978-3-319-93372-6_38)
+
+6. https://www.kaggle.com/mm5631/eda-predicting-casualties-in-terror-attacks?scriptVersionId=1270259
+
+7. https://github.com/kartik-joshi/GTD-Classifier
+
