@@ -48,9 +48,10 @@ With forest fires sweeping Southern California, leaving much destruction in thei
 ## Literature Review
 While topical, this data set hasn't been studied extensively. However, the frame of reference for our regression task is work by * P. Cortez and A. Morais (2007)*.
 
-Kaggle:
+Kaggle/GitHub sources:
 
 1. https://www.kaggle.com/elikplim/predict-the-burned-area-of-forest-fires
+2. 
 
 ## Exploratory Data Analysis
 We did some initial EDA and visualization to get an idea of our next steps: the required data pre-processing and balancing, and some hints on possible feature engineering. 
@@ -60,6 +61,7 @@ We did some initial EDA and visualization to get an idea of our next steps: the 
 
 library(tidyverse)
 library(formatR)
+library(psych)
 
 # load data
 data <- read.csv(file = "data/forestfires.csv", stringsAsFactors = FALSE)
