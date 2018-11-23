@@ -59,7 +59,7 @@ We did some initial EDA and visualization to get an idea of our next steps: the 
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 # load data
-data <- read.csv(file = "data/globalterrorismdb_0718dist.csv", row.names = 1, stringsAsFactors = FALSE)
+data <- read.csv(file = "data/forestfires.csv", stringsAsFactors = FALSE)
 
 summary(data)
 str(data)
@@ -78,7 +78,6 @@ head(data)
 
 ## Data Preparation
 
-Some cleaning is necessary because there are NAs and also several categorical variables stored as numerical.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 # clean the NA's
 # heart <- na.omit(heart)
