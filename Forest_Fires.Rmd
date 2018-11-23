@@ -1,0 +1,162 @@
+---
+title: "DSC5103 Final Project: Forest Fires"
+subtitle: 'Prediction of Burn Area using Meteorological Data'
+author: "Section A1 Group 10"
+date: "Oct 2018"
+output:
+  html_document:
+    highlight: tango
+    theme: yeti
+---
+<!--
+comments must be put in an HTML comment form
+-->
+
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 100)  # set output width, turn off scientific notation for big numbers
+# knitr::opts_chunk$set(echo = TRUE) # include=FALSE
+```
+
+## Introduction
+In this project, we will be studying the Forest Fires Data Set(source/cite). This dataset covers meteorological data for forest fires in Portugal from 2008, with 13 attributes each for 517 data points. 
+
+### Data Sources
+
+1. https://archive.ics.uci.edu/ml/datasets/forest+fires
+
+### Problem 
+
+We will be studying the following problem(s):
+
+* Predict the burned area of a forest fire, given the prevailing meteorological conditions.
+    + This data can be obtained in real-time, and is non-costly, and this prediction can provide instant feedback to the appropriate diaster response teams.
+    + Could be possibly be imbalanced problem, if converted to multi-class classification.
+
+
+### Evaluation Metrics
+
+Need to do some work on which one would be appropriate based on problem outlined above.
+
+* Regression - RMSE, MAD
+* Classification - recall, overall accuracy, AUC/ROC
+* Bingo Classification Accuracy?
+* 1-Away Classification Accuracy? 
+
+## Motivation
+With forest fires sweeping Southern California, leaving much destruction in their wake, there is need for a tool such as ours to improve firefighting resource management and disaster response. Spin some more stuff on why this work is important, and why we chose it/use case - what Xs you will get in the future to predict this Y.
+
+## Literature Review
+While topical, this data set hasn't been studied extensively. However, the frame of reference for our regression task is work by * P. Cortez and A. Morais (2007)*.
+
+Kaggle:
+
+1. https://www.kaggle.com/elikplim/predict-the-burned-area-of-forest-fires
+
+## Exploratory Data Analysis
+We did some initial EDA and visualization to get an idea of our next steps: the required data pre-processing and balancing, and some hints on possible feature engineering. 
+
+### Schema
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+
+# load data
+data <- read.csv(file = "data/globalterrorismdb_0718dist.csv", row.names = 1, stringsAsFactors = FALSE)
+
+summary(data)
+str(data)
+head(data)
+```
+
+### Distribution of Target Class
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+
+```
+
+### Some Viz
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+
+```
+
+## Data Preparation
+
+Some cleaning is necessary because there are NAs and also several categorical variables stored as numerical.
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# clean the NA's
+# heart <- na.omit(heart)
+# # convert to factors
+# heart$Sex <- as.factor(heart$Sex)
+# heart$Fbs <- as.factor(heart$Fbs)
+# heart$RestECG <- as.factor(heart$RestECG)
+# heart$ExAng <- as.factor(heart$ExAng)
+# heart$Slope <- as.factor(heart$Slope)
+# heart$Ca <- as.factor(heart$Ca)
+# summary(heart)
+```
+
+### Train-Validation Split
+Next, we will prepare the training and test dataset, as well as the 10 CV folds, for later model comparison.
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# split training and test data 50/50
+# N <- nrow(heart)
+# set.seed(456)
+# train.index <- sample(1:N, round(N/2))
+# test.index <- - train.index
+```
+
+Let's separate the test data for GBM use.
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+
+## Feature Engineering/Creation
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+## Modelling
+
+1. Elastic Net
+```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+2. Random Forest
+```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+3. XGBoost
+```{r xgboost, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+4. Ensemble 
+```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
+
+## Results and Model Comparison
+* Relevant plots, tables, discussions
+
+## Insights
+* Variable importance plots, other interpretations.
+
+## Conclusion
+* Limitations, scope for improvement
+* Multi-class classification by dividing burn area into buckets
+* Outlier detection methods
+
+
+## References
+In proper APA/MLA format.
+
+1. P. Cortez and A. Morais. A Data Mining Approach to Predict Forest Fires using Meteorological Data. In J. Neves, M. F. Santos and J. Machado Eds., New Trends in Artificial Intelligence, Proceedings of the 13th EPIA 2007 - Portuguese Conference on Artificial Intelligence, December, Guimaraes, Portugal, pp. 512-523, 2007. APPIA, ISBN-13 978-989-95618-0-9. Available at:http://www3.dsi.uminho.pt/pcortez/fires.pdf
+
+2.
+

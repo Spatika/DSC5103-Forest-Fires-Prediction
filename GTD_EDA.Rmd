@@ -24,6 +24,7 @@ In this project, we will be studying the Global Terrorism Database (source/cite)
 
 1. https://www.kaggle.com/START-UMD/gtd
 2. https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/KNERY9
+3. Codebook - https://www.start.umd.edu/gtd/downloads/Codebook.pdf
 
 ### Problem 
 
@@ -32,6 +33,7 @@ We will be studying the following problem(s):
 * Predict whether a terrorist attack will result in casualties/not (binary classification, by transforming the continuous target variable).
     + Could be possibly be imbalanced problem.
     + Recall is important metric (we care more about maximizing the true positives and reducing our false negatives).
+    + 
 * Predict the terrorist group to which a particular terrorist act can be attributed (multi-class classification).
     + Groups with low frequency can be grouped together as "Others" to avoid data imbalance. 
 * Predicting the attack type - hijacking/bombing/assassination.
