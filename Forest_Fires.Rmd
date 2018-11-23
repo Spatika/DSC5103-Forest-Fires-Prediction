@@ -58,6 +58,9 @@ We did some initial EDA and visualization to get an idea of our next steps: the 
 ### Schema
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
+library(tidyverse)
+library(formatR)
+
 # load data
 data <- read.csv(file = "data/forestfires.csv", stringsAsFactors = FALSE)
 
