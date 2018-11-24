@@ -121,6 +121,111 @@ Let's separate the test data for GBM use.
 
 ## Modelling
 
+K-Nearest Neighbour regression
+```{r}
+library(onehot)
+library(class)
+library(caret)
+library(FNN)
+library(Metrics)
+
+#encode factors for KNN
+data$month = as.factor(data$month)
+data$day = as.factor(data$day)
+
+encoder = onehot(data, max_levels = 100)
+knn_data = as.data.frame(predict(encoder, data))
+
+#separate train and test for KNN
+train_knn = knn_data[1:400,]
+test_knn = knn_data[401:517,]
+
+#Optimal K
+ks = 1:30
+mse.train = numeric(length=length(ks))
+mse.test  = numeric(length=length(ks))
+
+for (i in seq(along=ks)) {
+  model.train = knn.reg(train_knn, train_knn, train_knn$X, k=ks[i])
+  model.test  = knn.reg(train_knn, test_knn, train_knn$X, k=ks[i])
+  mse.train[i] = mean((train_knn$X - model.train$pred)^2)
+  mse.test[i] = mean((test_knn$X - model.test$pred)^2)
+}
+
+k.opt = ks[which.min(mse.test)]
+
+#training KNN regression
+
+knn_pred = knn.reg(train_knn, test_knn, train_knn$X, k=k.opt)
+knn_rmse = rmse(test_knn$X, knn_pred$pred)
+knn_rmse # 2.47
+
+```
+
+
+Support Vector Machines
+```{r}
+#### Support Vector Machines 
+
+library(e1071)
+
+train_data = data[1:400,]
+test_data = data[401:517,]
+
+#linear kernel
+svm_linear = svm(X ~ ., data=train_data, kernel = 'linear', cost = 1)
+pred.linear = predict(svm_linear, test_data)
+svm_lin_rmse = rmse(test_data$X, pred.linear)
+svm_lin_rmse # 2.4 
+
+tune_linear = tune(svm, X ~ .,  data = train_data, kernel='linear',
+                       ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6)))
+tuned_linear = tune_linear$best.model
+tuned_linear_pred = predict(tuned_linear, test_data) 
+svm_lin_tuned_rmse = rmse(test_data$X, tuned_linear_pred)
+svm_lin_tuned_rmse # 2.16
+
+#polynomial kernel
+svm_poly = svm(X ~ ., data=train_data, kernel = 'polynomial', cost = 1)
+pred.poly = predict(svm_poly, test_data)
+svm_poly_rmse = rmse(test_data$X, pred.poly)
+svm_poly_rmse # 61.6
+
+tune_poly = tune(svm, X ~ .,  data = train_data, kernel='polynomial',
+                   ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6)))
+tuned_poly = tune_poly$best.model
+tuned_poly_pred = predict(tuned_poly, test_data) 
+svm_poly_tuned_rmse = rmse(test_data$X, tuned_poly_pred)
+svm_poly_tuned_rmse # 51.9
+
+#RBF kernel
+svm_rbf = svm(X ~ ., data=train_data, kernel = 'radial', cost = 1)
+pred.rbf = predict(svm_rbf, test_data)
+svm_rbf_rmse = rmse(test_data$X, pred.rbf)
+svm_rbf_rmse # 2.12
+
+tune_rbf = tune(svm, X ~ .,  data = train_data, kernel='radial',
+                 ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8)))
+tuned_rbf = tune_rbf$best.model
+tuned_rbf_pred = predict(tuned_rbf, test_data) 
+svm_rbf_tuned_rmse = rmse(test_data$X, tuned_rbf_pred)
+svm_rbf_tuned_rmse # 2.09
+
+#Sigmoid kernel
+svm_sigmoid = svm(X ~ ., data=train_data, kernel = 'sigmoid', cost = 1)
+pred.sigmoid = predict(svm_sigmoid, test_data)
+svm_sigmoid_rmse = rmse(test_data$X, pred.sigmoid)
+svm_sigmoid_rmse # 2.22
+
+tune_sigmoid = tune(svm, X ~ .,  data = train_data, kernel='sigmoid',
+                ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8)))
+tuned_sigmoid = tune_sigmoid$best.model
+tuned_sigmoid_pred = predict(tuned_sigmoid, test_data) 
+svm_sigmoid_tuned_rmse = rmse(test_data$X, tuned_sigmoid_pred)
+svm_sigmoid_tuned_rmse # 3.6
+
+```
+
 1. Elastic Net
 ```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 # x.test <- heart[test.index, 1:13]
