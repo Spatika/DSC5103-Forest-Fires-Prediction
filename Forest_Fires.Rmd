@@ -82,12 +82,17 @@ ggplot(data,aes(data$area)) + geom_histogram()
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 describe(data)
 
+#columns
 names(data)
-names(select_if(data, is.numeric))
-names(select_if(data, is.factor))
-head(Filter(is.numeric,data))
+#numeric data
+names(Filter(is.numeric,data))
+#factor data
+names(Filter(is.factor,data))
+
+#check NAs
 sum(is.na(data))
 
+#check correlation - there are some colinearity based on which we might drop features
 corPlot(Filter(is.numeric,data))
 
 #Visualize realtion between target and major predictors
@@ -109,48 +114,50 @@ ggplot(data, aes(x=data$day,data$area)) + geom_boxplot(outlier.shape=NA) +
 
 ## Data Preparation
 
-```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# clean the NA's
-# heart <- na.omit(heart)
-# # convert to factors
-# heart$Sex <- as.factor(heart$Sex)
-# heart$Fbs <- as.factor(heart$Fbs)
-# heart$RestECG <- as.factor(heart$RestECG)
-# heart$ExAng <- as.factor(heart$ExAng)
-# heart$Slope <- as.factor(heart$Slope)
-# heart$Ca <- as.factor(heart$Ca)
-# summary(heart)
-```
-
 ### Train-Validation Split
 Next, we will prepare the training and test dataset, as well as the 10 CV folds, for later model comparison.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# split training and test data 50/50
-# N <- nrow(heart)
-# set.seed(456)
-# train.index <- sample(1:N, round(N/2))
-# test.index <- - train.index
+# split training and test data 70/30
+N <- nrow(data)
+set.seed(1)
+train.index <- sample(1:N, round(N*0.7))
+test.index <- - train.index
 ```
 
 Let's separate the test data for GBM use.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
+model_lm = glm(area~ X+Y+rain+wind+temp+RH+area+DC+ISI+FFMC+month+day,
+               data=data[train.index,])
+summary(model_lm)
+glm.diag.plots(model_lm)
+
+sqrt(mean((data[train.index,'area']-model_lm$fitted.values)^2))
+
+model_step = stepAIC(model_lm, direction = 'backward')
+model_step$anova
+sqrt(mean((data[train.index,'area']-model_step$fitted.values)^2))
+
+model_lasso = cv.glmnet(area~.,
+               data=data[train.index,], nfolds=10, use.model.frame = T, alpha = 1)
+
+lam_min = model_lasso$lambda.min
+
+train_pred = predict(model_lasso, s=lam_min, newx=data[train.index,], exact=TRUE)
+
 ```
 
 
 ## Feature Engineering/Creation
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
+
 ```
 
 ## Modelling
 
 1. Elastic Net
 ```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
+
+
 ```
 
 K-Nearest Neighbour regression
