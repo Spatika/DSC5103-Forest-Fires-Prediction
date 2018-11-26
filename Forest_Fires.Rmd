@@ -67,68 +67,207 @@ library(caret)
 library(corrplot)
 
 # load data
-data <- read.csv(file = "data/forestfires.csv", stringsAsFactors = FALSE)
+data <- read.csv(file = "forestfires.csv", stringsAsFactors = T)
 
 summary(data)
 str(data)
 head(data)
 ```
 
+
 ### Distribution of Target Class
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+ggplot(data,aes(data$area)) + geom_histogram()
 
 ```
 
-### Some Viz
+### EDA
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+describe(data)
 
+#columns
+names(data)
+#numeric data
+names(Filter(is.numeric,data))
+#factor data
+names(Filter(is.factor,data))
+
+#check NAs
+sum(is.na(data))
+
+#check correlation - there are some colinearity based on which we might drop features
+corPlot(Filter(is.numeric,data))
+
+#Visualize realtion between target and major predictors
+pairs(dplyr::select(data,c('rain', 'wind', 'temp', 'RH', 'area', 'DC', 'ISI', 'FFMC')))
+
+#Day/Month wise incidents
+plot(data$day, col='purple')
+plot(data$month, col='purple')
+#there are more incidents on weekends, it might mean that campers vactioning might have caused/spotted fires
+
+
+#Day/Month wise area Burnt 
+ggplot(data, aes(x=data$month,data$area)) + geom_boxplot(outlier.shape=NA) + 
+  geom_jitter(col='red') + theme_bw()
+
+ggplot(data, aes(x=data$day,data$area)) + geom_boxplot(outlier.shape=NA) + 
+  geom_jitter(col='red') + theme_bw()
 ```
 
 ## Data Preparation
 
-```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# clean the NA's
-# heart <- na.omit(heart)
-# # convert to factors
-# heart$Sex <- as.factor(heart$Sex)
-# heart$Fbs <- as.factor(heart$Fbs)
-# heart$RestECG <- as.factor(heart$RestECG)
-# heart$ExAng <- as.factor(heart$ExAng)
-# heart$Slope <- as.factor(heart$Slope)
-# heart$Ca <- as.factor(heart$Ca)
-# summary(heart)
-```
-
 ### Train-Validation Split
 Next, we will prepare the training and test dataset, as well as the 10 CV folds, for later model comparison.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# split training and test data 50/50
-# N <- nrow(heart)
-# set.seed(456)
-# train.index <- sample(1:N, round(N/2))
-# test.index <- - train.index
+# split training and test data 70/30
+N <- nrow(data)
+set.seed(1)
+train.index <- sample(1:N, round(N*0.7))
+test.index <- - train.index
 ```
 
 Let's separate the test data for GBM use.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
+model_lm = glm(area~ X+Y+rain+wind+temp+RH+area+DC+ISI+FFMC+month+day,
+               data=data[train.index,])
+summary(model_lm)
+glm.diag.plots(model_lm)
+
+sqrt(mean((data[train.index,'area']-model_lm$fitted.values)^2))
+
+model_step = stepAIC(model_lm, direction = 'backward')
+model_step$anova
+sqrt(mean((data[train.index,'area']-model_step$fitted.values)^2))
+
+model_lasso = cv.glmnet(area~.,
+               data=data[train.index,], nfolds=10, use.model.frame = T, alpha = 1)
+
+lam_min = model_lasso$lambda.min
+
+train_pred = predict(model_lasso, s=lam_min, newx=data[train.index,], exact=TRUE)
+
 ```
 
 
 ## Feature Engineering/Creation
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
+
 ```
 
 ## Modelling
 
 1. Elastic Net
 ```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
+
+
 ```
+
+K-Nearest Neighbour regression
+```{r}
+library(onehot)
+library(class)
+library(caret)
+library(FNN)
+library(Metrics)
+
+#encode factors for KNN
+data$month = as.factor(data$month)
+data$day = as.factor(data$day)
+
+encoder = onehot(data, max_levels = 100)
+knn_data = as.data.frame(predict(encoder, data))
+
+#separate train and test for KNN
+train_knn = knn_data[1:400,]
+test_knn = knn_data[401:517,]
+
+#Optimal K
+ks = 1:30
+mse.train = numeric(length=length(ks))
+mse.test  = numeric(length=length(ks))
+
+for (i in seq(along=ks)) {
+  model.train = knn.reg(train_knn, train_knn, train_knn$X, k=ks[i])
+  model.test  = knn.reg(train_knn, test_knn, train_knn$X, k=ks[i])
+  mse.train[i] = mean((train_knn$X - model.train$pred)^2)
+  mse.test[i] = mean((test_knn$X - model.test$pred)^2)
+}
+
+k.opt = ks[which.min(mse.test)]
+
+#training KNN regression
+
+knn_pred = knn.reg(train_knn, test_knn, train_knn$X, k=k.opt)
+knn_rmse = rmse(test_knn$X, knn_pred$pred)
+knn_rmse # 2.47
+
+```
+
+
+Support Vector Machines
+```{r}
+#### Support Vector Machines 
+
+library(e1071)
+
+train_data = data[1:400,]
+test_data = data[401:517,]
+
+#linear kernel
+svm_linear = svm(X ~ ., data=train_data, kernel = 'linear', cost = 1)
+pred.linear = predict(svm_linear, test_data)
+svm_lin_rmse = rmse(test_data$X, pred.linear)
+svm_lin_rmse # 2.4 
+
+tune_linear = tune(svm, X ~ .,  data = train_data, kernel='linear',
+                       ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6)))
+tuned_linear = tune_linear$best.model
+tuned_linear_pred = predict(tuned_linear, test_data) 
+svm_lin_tuned_rmse = rmse(test_data$X, tuned_linear_pred)
+svm_lin_tuned_rmse # 2.16
+
+#polynomial kernel
+svm_poly = svm(X ~ ., data=train_data, kernel = 'polynomial', cost = 1)
+pred.poly = predict(svm_poly, test_data)
+svm_poly_rmse = rmse(test_data$X, pred.poly)
+svm_poly_rmse # 61.6
+
+tune_poly = tune(svm, X ~ .,  data = train_data, kernel='polynomial',
+                   ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6)))
+tuned_poly = tune_poly$best.model
+tuned_poly_pred = predict(tuned_poly, test_data) 
+svm_poly_tuned_rmse = rmse(test_data$X, tuned_poly_pred)
+svm_poly_tuned_rmse # 51.9
+
+#RBF kernel
+svm_rbf = svm(X ~ ., data=train_data, kernel = 'radial', cost = 1)
+pred.rbf = predict(svm_rbf, test_data)
+svm_rbf_rmse = rmse(test_data$X, pred.rbf)
+svm_rbf_rmse # 2.12
+
+tune_rbf = tune(svm, X ~ .,  data = train_data, kernel='radial',
+                 ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8)))
+tuned_rbf = tune_rbf$best.model
+tuned_rbf_pred = predict(tuned_rbf, test_data) 
+svm_rbf_tuned_rmse = rmse(test_data$X, tuned_rbf_pred)
+svm_rbf_tuned_rmse # 2.09
+
+#Sigmoid kernel
+svm_sigmoid = svm(X ~ ., data=train_data, kernel = 'sigmoid', cost = 1)
+pred.sigmoid = predict(svm_sigmoid, test_data)
+svm_sigmoid_rmse = rmse(test_data$X, pred.sigmoid)
+svm_sigmoid_rmse # 2.22
+
+tune_sigmoid = tune(svm, X ~ .,  data = train_data, kernel='sigmoid',
+                ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8)))
+tuned_sigmoid = tune_sigmoid$best.model
+tuned_sigmoid_pred = predict(tuned_sigmoid, test_data) 
+svm_sigmoid_tuned_rmse = rmse(test_data$X, tuned_sigmoid_pred)
+svm_sigmoid_tuned_rmse # 3.6
+
+```
+
 
 2. Random Forest
 ```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
