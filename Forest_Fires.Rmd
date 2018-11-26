@@ -60,7 +60,7 @@ We did some initial EDA and visualization to get an idea of our next steps: the 
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 library(tidyverse)
-library(formatR)
+#library(formatR)
 library(psych)
 
 # load data
@@ -122,27 +122,22 @@ N <- nrow(data)
 set.seed(1)
 train.index <- sample(1:N, round(N*0.7))
 test.index <- - train.index
+
+#create a normalize copy of data
+normalize_c = function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+denormalize <- function(x, min_x, max_x) {
+  return(x * (max_x - min_x) + min_x) 
+}
+
+data_norm = data %>% mutate_at(names(Filter(is.numeric,data)),normalize_c)
 ```
 
 Let's separate the test data for GBM use.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-model_lm = glm(area~ X+Y+rain+wind+temp+RH+area+DC+ISI+FFMC+month+day,
-               data=data[train.index,])
-summary(model_lm)
-glm.diag.plots(model_lm)
 
-sqrt(mean((data[train.index,'area']-model_lm$fitted.values)^2))
-
-model_step = stepAIC(model_lm, direction = 'backward')
-model_step$anova
-sqrt(mean((data[train.index,'area']-model_step$fitted.values)^2))
-
-model_lasso = cv.glmnet(area~.,
-               data=data[train.index,], nfolds=10, use.model.frame = T, alpha = 1)
-
-lam_min = model_lasso$lambda.min
-
-train_pred = predict(model_lasso, s=lam_min, newx=data[train.index,], exact=TRUE)
 
 ```
 
@@ -156,7 +151,43 @@ train_pred = predict(model_lasso, s=lam_min, newx=data[train.index,], exact=TRUE
 
 1. Elastic Net
 ```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+library(glmnetUtils)
+library(MASS)
+library(boot)
 
+model_lm = glm(area~ rain+wind+temp+RH+DC+ISI+FFMC+month+day,
+               data=data_norm[train.index,], family = 'gaussian')
+summary(model_lm)
+glm.diag.plots(model_lm)
+
+train_pred_area_lm = as.numeric(denormalize(model_lm$fitted.values,min(data$area), max(data$area)))
+
+sqrt(mean((data[train.index,'area']-train_pred_area_lm)^2))
+
+model_step = stepAIC(model_lm, direction = 'both')
+model_step$anova
+
+train_pred_area_step = as.numeric(denormalize(model_step$fitted.values,min(data$area), max(data$area)))
+
+sqrt(mean((data[train.index,'area']-train_pred_area_step)^2))
+
+model_lasso = cv.glmnet(area~.,
+               data=data_norm[train.index,], nfolds=10, use.model.frame = T, alpha = 1)
+
+lam_lasso = model_lasso$lambda.min
+
+train_pred_area_lasso = as.numeric(denormalize(predict(model_lasso, s=lam_lasso, data_norm[train.index,], exact=TRUE),min(data$area),max(data$area)))
+
+sqrt(mean((data[train.index,'area']-train_pred_area_lasso)^2))
+
+model_ridge = cv.glmnet(area~rain+wind+temp+RH+DC+ISI+FFMC+month+day,
+               data=data_norm[train.index,], nfolds=10, use.model.frame = T, alpha = 0)
+
+lam_ridge = model_ridge$lambda.min
+
+train_pred_area_ridge = as.numeric(denormalize(predict(model_ridge, s=lam_ridge, data_norm[train.index,], exact=TRUE),min(data$area),max(data$area)))
+
+sqrt(mean((data[train.index,'area']-train_pred_area_ridge)^2))
 
 ```
 
