@@ -62,6 +62,9 @@ We did some initial EDA and visualization to get an idea of our next steps: the 
 library(tidyverse)
 #library(formatR)
 library(psych)
+library(caretEnsemble)
+library(caret)
+library(corrplot)
 
 # load data
 data <- read.csv(file = "forestfires.csv", stringsAsFactors = T)
@@ -311,8 +314,36 @@ svm_sigmoid_tuned_rmse # 3.6
 
 4. Ensemble 
 ```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
+
+area_corr <- cor(dplyr::select(data, -c("month","day")))
+corrplot(area_corr, method = "circle")
+
+set.seed(17)
+
+train.index <- createDataPartition(data$area, p = .8, list = FALSE)
+ensemble_train <- data[train.index,]
+ensemble_test <- data[-train.index,]
+
+folds <- createFolds(ensemble_train$area,5)
+
+control <- trainControl(method='repeatedcv', number=5, repeats=2, index=folds, search = 'grid', savePredictions = 'final')
+
+algos <- c('xgbTree','knn')
+
+models <- caretList(area~., data=ensemble_train, metric = 'RMSE', trControl=control, methodList=algos)
+
+models_perf <- resamples(models)
+modelCor(models_perf)
+
+stack_control <- trainControl(method = 'repeatedCV', number = 2, repeats = 5)
+
+stack_lm <- caretStack(models, method='lm',  trControl=stack_control)
+
+pred_stack <- predict(stack_lm, ensemble_test)
+
+## Accuracy and RMSE of Stacking Model
+stack_accuracy <- RMSE(pred_stack, ensemble_test$area)
+stack_accuracy
 ```
 
 ## Results and Model Comparison
