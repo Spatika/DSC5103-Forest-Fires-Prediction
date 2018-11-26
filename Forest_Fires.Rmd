@@ -162,6 +162,11 @@ model_lm = glm(area~ rain+wind+temp+RH+DC+ISI+FFMC+month+day,
                data=data_norm[train.index,], family = 'gaussian')
 summary(model_lm)
 glm.diag.plots(model_lm)
+#cook's statistics shows that few outliers are heavily affecting prediction
+#As shown in the histogram of area, there many values at 0 but few cases with very high area burnt such as 900-1100 hectors. we can't remove these outliers as these are the cases which we are trying to predicts 
+#Residuals plot shows a very flat points instead of a normal distribution again because of extreme outlier influence
+
+#this means linear regression models will not be good for this case
 
 train_pred_area_lm = as.numeric(denormalize(model_lm$fitted.values,min(data$area), max(data$area)))
 
@@ -192,6 +197,7 @@ train_pred_area_ridge = as.numeric(denormalize(predict(model_ridge, s=lam_ridge,
 
 sqrt(mean((data[train.index,'area']-train_pred_area_ridge)^2))
 
+#my intial suspicion is proved that linear models are unfit for this case. 
 ```
 
 K-Nearest Neighbour regression
