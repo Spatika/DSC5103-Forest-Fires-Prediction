@@ -164,7 +164,7 @@ summary(model_lm)
 glm.diag.plots(model_lm)
 #cook's statistics shows that few outliers are heavily affecting prediction
 #As shown in the histogram of area, there many values at 0 but few cases with very high area burnt such as 900-1100 hectors. we can't remove these outliers as these are the cases which we are trying to predicts 
-#Residuals plot shows a very flat points instead of a normal distribution again because of extreme outlier influence
+#Residuals plot shows a very flat points instead of a uniform distribution again because of extreme outlier influence
 
 #this means linear regression models will not be good for this case
 
