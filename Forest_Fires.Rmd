@@ -58,16 +58,16 @@ We did some initial EDA and visualization to get an idea of our next steps: the 
 
 ### Schema
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-
 library(tidyverse)
 library(formatR)
+library(LiblineaR)
 library(psych)
 library(caretEnsemble)
 library(caret)
 library(corrplot)
 
 # load data
-data <- read.csv(file = "forestfires.csv", stringsAsFactors = T)
+data <- read.csv(file = "./data/forestfires.csv", stringsAsFactors = T)
 
 summary(data)
 str(data)
@@ -167,7 +167,6 @@ K-Nearest Neighbour regression
 ```{r}
 library(onehot)
 library(class)
-library(caret)
 library(FNN)
 library(Metrics)
 
@@ -210,7 +209,6 @@ Support Vector Machines
 #### Support Vector Machines 
 
 library(e1071)
-
 train_data = data[1:400,]
 test_data = data[401:517,]
 
@@ -284,9 +282,6 @@ svm_sigmoid_tuned_rmse # 3.6
 4. Ensemble 
 ```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
-area_corr <- cor(dplyr::select(data, -c("month","day")))
-corrplot(area_corr, method = "circle")
-
 set.seed(17)
 
 train.index <- createDataPartition(data$area, p = .8, list = FALSE)
@@ -297,7 +292,7 @@ folds <- createFolds(ensemble_train$area,5)
 
 control <- trainControl(method='repeatedcv', number=5, repeats=2, index=folds, search = 'grid', savePredictions = 'final')
 
-algos <- c('xgbTree','knn')
+algos <- c('svmLinear','knn')
 
 models <- caretList(area~., data=ensemble_train, metric = 'RMSE', trControl=control, methodList=algos)
 
@@ -312,7 +307,28 @@ pred_stack <- predict(stack_lm, ensemble_test)
 
 ## Accuracy and RMSE of Stacking Model
 stack_accuracy <- RMSE(pred_stack, ensemble_test$area)
-stack_accuracy
+stack_accuracy # 13.68
+
+
+
+
+## Manual Stacking
+
+tuned_rbf_pred_train = predict(tuned_rbf, train_data)
+knn_pred_train = knn.reg(train_knn, train_knn, train_knn$X, k=k.opt)
+
+stack_train <- cbind.data.frame(tuned_rbf_pred_train,knn_pred_train$pred,train_data$area)
+stack_test <- cbind.data.frame(tuned_rbf_pred,knn_pred$pred, test_data$area)
+
+names(stack_train) <- c("rbf","knn","area")
+names(stack_test) <- c("rbf","knn","area")
+
+manual_stack <- glm(area ~ .,data = stack_train)
+manual_pred_stack <- predict(manual_stack, stack_test)
+
+manual_stack_accuracy <- RMSE(manual_pred_stack, stack_test$area)
+manual_stack_accuracy
+
 ```
 
 ## Results and Model Comparison
