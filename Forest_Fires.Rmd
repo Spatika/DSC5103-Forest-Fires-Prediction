@@ -64,12 +64,48 @@ library(formatR)
 library(psych)
 
 # load data
-data <- read.csv(file = "data/forestfires.csv", stringsAsFactors = FALSE)
+data <- read.csv(file = "forestfires.csv", stringsAsFactors = T)
 
 summary(data)
 str(data)
 head(data)
 ```
+
+### EDA
+
+```{r}
+describe(data)
+
+names(data)
+names(select_if(data, is.numeric))
+names(select_if(data, is.factor))
+head(Filter(is.numeric,data))
+sum(is.na(data))
+
+corPlot(Filter(is.numeric,data))
+
+#Visualize realtion between target and major predictors
+pairs(dplyr::select(data,c('rain', 'wind', 'temp', 'RH', 'area', 'DC', 'ISI', 'FFMC')))
+
+#Day/Month wise incidents
+plot(data$day, col='purple')
+plot(data$month, col='purple')
+#there are more incidents on weekends, it might mean that campers vactioning might have caused/spotted fires
+
+
+#Day/Month wise area Burnt 
+ggplot(data, aes(x=data$month,data$area)) + geom_boxplot(outlier.shape=NA) + 
+  geom_jitter(col='red') + theme_bw()
+
+ggplot(data, aes(x=data$day,data$area)) + geom_boxplot(outlier.shape=NA) + 
+  geom_jitter(col='red') + theme_bw()
+
+
+
+```
+
+
+
 
 ### Distribution of Target Class
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
