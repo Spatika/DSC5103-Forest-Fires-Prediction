@@ -71,9 +71,15 @@ str(data)
 head(data)
 ```
 
-### EDA
 
-```{r}
+### Distribution of Target Class
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+ggplot(data,aes(data$area)) + geom_histogram()
+
+```
+
+### EDA
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 describe(data)
 
 names(data)
@@ -99,22 +105,6 @@ ggplot(data, aes(x=data$month,data$area)) + geom_boxplot(outlier.shape=NA) +
 
 ggplot(data, aes(x=data$day,data$area)) + geom_boxplot(outlier.shape=NA) + 
   geom_jitter(col='red') + theme_bw()
-
-ggplot(data,aes(data$area)) + geom_histogram()
-
-```
-
-
-
-
-### Distribution of Target Class
-```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-
-```
-
-### Some Viz
-```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-
 ```
 
 ## Data Preparation
@@ -156,6 +146,12 @@ Let's separate the test data for GBM use.
 ```
 
 ## Modelling
+
+1. Elastic Net
+```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+# x.test <- heart[test.index, 1:13]
+# y.test <- heart[test.index, 14]
+```
 
 K-Nearest Neighbour regression
 ```{r}
@@ -262,11 +258,6 @@ svm_sigmoid_tuned_rmse # 3.6
 
 ```
 
-1. Elastic Net
-```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
-```
 
 2. Random Forest
 ```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
