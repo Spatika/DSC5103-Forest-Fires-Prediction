@@ -100,7 +100,7 @@ ggplot(data, aes(x=data$month,data$area)) + geom_boxplot(outlier.shape=NA) +
 ggplot(data, aes(x=data$day,data$area)) + geom_boxplot(outlier.shape=NA) + 
   geom_jitter(col='red') + theme_bw()
 
-
+ggplot(data,aes(data$area)) + geom_histogram()
 
 ```
 
