@@ -161,7 +161,7 @@ y.test <- data[test.index, "area"]
 
 ## Modelling
 
-1. Elastic Net
+### 1. Elastic Net
 ```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 library(glmnetUtils)
 library(MASS)
@@ -211,7 +211,7 @@ sqrt(mean((data[train.index,'area']-train_pred_area_ridge)^2))
 # as per initial hypothesis - linear models are found to be unfit for this case. 
 ```
 
-2. k-Nearest Neighbours Regression
+### 2. k-Nearest Neighbours Regression
 ```{r}
 library(onehot)
 library(class)
@@ -252,7 +252,7 @@ knn_rmse # 15.3
 ```
 
 
-3. Support Vector Machines
+### 3. Support Vector Machines
 ```{r}
 #### Support Vector Machines 
 
@@ -324,7 +324,7 @@ svm_sigmoid_tuned_rmse
 ```
 
 
-4. Random Forest
+### 4. Random Forest
 ```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 library("randomForest")
 
@@ -351,7 +351,7 @@ pred.rf <- predict(model.rf, newdata=data[test.index,])
 rmse(pred.rf, data[test.index,"area"]) # ~29.21
 ```
 
-5. XGBoost
+### 5a. XGBoost
 ```{r xgboost, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 # fit a boosting model with optimal parameters - from running 9-xgboost_tuning.R with dtrain as input
@@ -362,7 +362,7 @@ colsample.opt <- 1
 nrounds.opt <- 134
 
 set.seed(12345)
-model.xgb <- xgboost(data=dtrain, objective="reg:linear", nrounds=nrounds.opt, max_depth = max_depth.opt, eta=0.005, subsample=subsample.opt, colsample_bytree=colsample.opt , verbose=0)
+model.xgb <- xgboost(data=dtrain, objective="reg:linear", nrounds=nrounds.opt, max_depth = max_depth.opt, eta=eta.opt, subsample=subsample.opt, colsample_bytree=colsample.opt , verbose=0)
 
 # predict
 pred.xgb <- predict(model.xgb, x.test)
@@ -371,7 +371,16 @@ pred.xgb <- predict(model.xgb, x.test)
 rmse(pred.xgb, y.test) # ~36.87052
 ```
 
-6. Ensemble 
+### 5b. XGBoost Variable Importance Plot
+```{r xgb varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+
+importance_matrix <- xgb.importance(model = model.xgb, feature_names = colnames(x.train))
+importance_matrix
+xgb.plot.importance(importance_matrix=importance_matrix)
+
+```
+
+### 6. Ensemble 
 ```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 area_corr <- cor(dplyr::select(data, -c("month","day")))
