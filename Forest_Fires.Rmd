@@ -51,7 +51,7 @@ While topical, this data set hasn't been studied extensively. However, the frame
 Kaggle/GitHub sources:
 
 1. https://www.kaggle.com/elikplim/predict-the-burned-area-of-forest-fires
-2. 
+
 
 ## Exploratory Data Analysis
 We did some initial EDA and visualization to get an idea of our next steps: the required data pre-processing and balancing, and some hints on possible feature engineering. 
@@ -171,11 +171,13 @@ model_lm = glm(area~ rain+wind+temp+RH+DC+ISI+FFMC+month+day,
                data=data_norm[train.index,], family = 'gaussian')
 summary(model_lm)
 glm.diag.plots(model_lm)
-#cook's statistics shows that few outliers are heavily affecting prediction
-#As shown in the histogram of area, there many values at 0 but few cases with very high area burnt such as 900-1100 hectors. we can't remove these outliers as these are the cases which we are trying to predicts 
-#Residuals plot shows a very flat points instead of a uniform distribution again because of extreme outlier influence
+# cook's statistics shows that few outliers are heavily affecting prediction
+# As shown in the histogram of area, there many values at 0 but few cases with very high area burnt such as 900-1100 ha
+# We can't remove these outliers as these are also cases which we are trying to predict
 
-#this means linear regression models will not be good for this case
+# Residuals plot shows a very flat, instead of a uniform distribution again because of extreme outlier influence
+
+# this means linear regression models will not be good for this case
 
 train_pred_area_lm = as.numeric(denormalize(model_lm$fitted.values,min(data$area), max(data$area)))
 
@@ -206,7 +208,7 @@ train_pred_area_ridge = as.numeric(denormalize(predict(model_ridge, s=lam_ridge,
 
 sqrt(mean((data[train.index,'area']-train_pred_area_ridge)^2))
 
-# my intial suspicion is proved that linear models are unfit for this case. 
+# as per initial hypothesis - linear models are found to be unfit for this case. 
 ```
 
 2. k-Nearest Neighbours Regression
@@ -352,17 +354,21 @@ rmse(pred.rf, data[test.index,"area"]) # ~29.21
 5. XGBoost
 ```{r xgboost, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
-# fit a boosting model with optimal parameters
+# fit a boosting model with optimal parameters - from running 9-xgboost_tuning.R with dtrain as input
+max_depth.opt <- 2
+eta.opt <- 0.005
+subsample.opt <- 1
+colsample.opt <- 1
+nrounds.opt <- 134
+
 set.seed(12345)
-model.xgb <- xgboost(data=dtrain, objective="reg:linear", nrounds=1183, max_depth=2, eta=0.005, subsample=0.5, colsample_bytree=1, verbose=0)
+model.xgb <- xgboost(data=dtrain, objective="reg:linear", nrounds=nrounds.opt, max_depth = max_depth.opt, eta=0.005, subsample=subsample.opt, colsample_bytree=colsample.opt , verbose=0)
 
 # predict
 pred.xgb <- predict(model.xgb, x.test)
 
 # rmse
-rmse(pred.xgb, y.test)
-
-
+rmse(pred.xgb, y.test) # ~36.87052
 ```
 
 6. Ensemble 
@@ -415,6 +421,4 @@ stack_accuracy
 In proper APA/MLA format.
 
 1. P. Cortez and A. Morais. A Data Mining Approach to Predict Forest Fires using Meteorological Data. In J. Neves, M. F. Santos and J. Machado Eds., New Trends in Artificial Intelligence, Proceedings of the 13th EPIA 2007 - Portuguese Conference on Artificial Intelligence, December, Guimaraes, Portugal, pp. 512-523, 2007. APPIA, ISBN-13 978-989-95618-0-9. Available at:http://www3.dsi.uminho.pt/pcortez/fires.pdf
-
-2.
 
