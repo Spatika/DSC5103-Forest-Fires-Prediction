@@ -59,8 +59,6 @@ We did some initial EDA and visualization to get an idea of our next steps: the 
 ### Schema
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 library(tidyverse)
-library(formatR)
-library(LiblineaR)
 library(psych)
 library(caretEnsemble)
 library(caret)
@@ -71,8 +69,6 @@ library(ModelMetrics)
 data <- read.csv(file = "./data/forestfires.csv", stringsAsFactors = T)
 
 summary(data)
-str(data)
-head(data)
 ```
 
 
@@ -381,7 +377,10 @@ xgb.plot.importance(importance_matrix=importance_matrix)
 ```
 
 ### 6. Ensemble 
-```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
+
+area_corr <- cor(dplyr::select(data, -c("month", "day")))
+corrplot(area_corr, method = "circle")
 
 set.seed(17)
 
@@ -410,25 +409,6 @@ pred_stack <- predict(stack_lm, ensemble_test)
 stack_accuracy <- RMSE(pred_stack, ensemble_test$area)
 stack_accuracy # 13.68
 
-
-
-
-## Manual Stacking
-
-tuned_rbf_pred_train = predict(tuned_rbf, train_data)
-knn_pred_train = knn.reg(train_knn, train_knn, train_knn$X, k=k.opt)
-
-stack_train <- cbind.data.frame(tuned_rbf_pred_train,knn_pred_train$pred,train_data$area)
-stack_test <- cbind.data.frame(tuned_rbf_pred,knn_pred$pred, test_data$area)
-
-names(stack_train) <- c("rbf","knn","area")
-names(stack_test) <- c("rbf","knn","area")
-
-manual_stack <- glm(area ~ .,data = stack_train)
-manual_pred_stack <- predict(manual_stack, stack_test)
-
-manual_stack_accuracy <- RMSE(manual_pred_stack, stack_test$area)
-manual_stack_accuracy
 
 ```
 
