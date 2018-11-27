@@ -51,7 +51,7 @@ While topical, this data set hasn't been studied extensively. However, the frame
 Kaggle/GitHub sources:
 
 1. https://www.kaggle.com/elikplim/predict-the-burned-area-of-forest-fires
-2. 
+
 
 ## Exploratory Data Analysis
 We did some initial EDA and visualization to get an idea of our next steps: the required data pre-processing and balancing, and some hints on possible feature engineering. 
@@ -65,6 +65,7 @@ library(psych)
 library(caretEnsemble)
 library(caret)
 library(corrplot)
+library(ModelMetrics)
 
 # load data
 data <- read.csv(file = "./data/forestfires.csv", stringsAsFactors = T)
@@ -83,7 +84,7 @@ ggplot(data,aes(data$area)) + geom_histogram()
 
 ### EDA
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-describe(data)
+# describe(data)
 
 #columns
 names(data)
@@ -95,16 +96,16 @@ names(Filter(is.factor,data))
 #check NAs
 sum(is.na(data))
 
-#check correlation - there are some colinearity based on which we might drop features
+# check correlation - there are some colinearity based on which we might drop features
 corPlot(Filter(is.numeric,data))
 
-#Visualize realtion between target and major predictors
+# visualize relation between target and major predictors
 pairs(dplyr::select(data,c('rain', 'wind', 'temp', 'RH', 'area', 'DC', 'ISI', 'FFMC')))
 
-#Day/Month wise incidents
+# day/month wise incidents
 plot(data$day, col='purple')
 plot(data$month, col='purple')
-#there are more incidents on weekends, it might mean that campers vactioning might have caused/spotted fires
+# there are more incidents on weekends (fri/sat/sun), it might mean that campers vactioning might have caused/spotted fires
 
 
 #Day/Month wise area Burnt 
@@ -124,28 +125,32 @@ Next, we will prepare the training and test dataset, as well as the 10 CV folds,
 N <- nrow(data)
 set.seed(1)
 train.index <- sample(1:N, round(N*0.7))
-test.index <- - train.index
+test.index <- -train.index
+
+# create a normalized copy of data
+normalize_c = function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+denormalize <- function(x, min_x, max_x) {
+  return(x * (max_x - min_x) + min_x) 
+}
+
+data_norm = data %>% mutate_at(names(Filter(is.numeric,data)),normalize_c)
 ```
 
-Let's separate the test data for GBM use.
+Separating the data for GBM use:
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-model_lm = glm(area~ X+Y+rain+wind+temp+RH+area+DC+ISI+FFMC+month+day,
-               data=data[train.index,])
-summary(model_lm)
-glm.diag.plots(model_lm)
 
-sqrt(mean((data[train.index,'area']-model_lm$fitted.values)^2))
+library(xgboost)
+# convert data for xgboost - onehot encoding is automatically done 
+x.train <- model.matrix(area ~ ., data=data[train.index, ])[, -13]
+y.train <- data[train.index, "area"]
 
-model_step = stepAIC(model_lm, direction = 'backward')
-model_step$anova
-sqrt(mean((data[train.index,'area']-model_step$fitted.values)^2))
+dtrain <- xgb.DMatrix(data=x.train, label=y.train)
 
-model_lasso = cv.glmnet(area~.,
-               data=data[train.index,], nfolds=10, use.model.frame = T, alpha = 1)
-
-lam_min = model_lasso$lambda.min
-
-train_pred = predict(model_lasso, s=lam_min, newx=data[train.index,], exact=TRUE)
+x.test <- model.matrix(area ~ ., data=data[test.index, ])[ ,-13]
+y.test <- data[test.index, "area"]
 
 ```
 
@@ -157,13 +162,57 @@ train_pred = predict(model_lasso, s=lam_min, newx=data[train.index,], exact=TRUE
 
 ## Modelling
 
-1. Elastic Net
+### 1. Elastic Net
 ```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+library(glmnetUtils)
+library(MASS)
+library(boot)
 
+model_lm = glm(area~ rain+wind+temp+RH+DC+ISI+FFMC+month+day,
+               data=data_norm[train.index,], family = 'gaussian')
+summary(model_lm)
+glm.diag.plots(model_lm)
+# cook's statistics shows that few outliers are heavily affecting prediction
+# As shown in the histogram of area, there many values at 0 but few cases with very high area burnt such as 900-1100 ha
+# We can't remove these outliers as these are also cases which we are trying to predict
 
+# Residuals plot shows a very flat, instead of a uniform distribution again because of extreme outlier influence
+
+# this means linear regression models will not be good for this case
+
+train_pred_area_lm = as.numeric(denormalize(model_lm$fitted.values,min(data$area), max(data$area)))
+
+sqrt(mean((data[train.index,'area']-train_pred_area_lm)^2))
+
+model_step = stepAIC(model_lm, direction = 'both')
+model_step$anova
+
+train_pred_area_step = as.numeric(denormalize(model_step$fitted.values,min(data$area), max(data$area)))
+
+sqrt(mean((data[train.index,'area']-train_pred_area_step)^2))
+
+model_lasso = cv.glmnet(area~.,
+               data=data_norm[train.index,], nfolds=10, use.model.frame = T, alpha = 1)
+
+lam_lasso = model_lasso$lambda.min
+
+train_pred_area_lasso = as.numeric(denormalize(predict(model_lasso, s=lam_lasso, data_norm[train.index,], exact=TRUE),min(data$area),max(data$area)))
+
+sqrt(mean((data[train.index,'area']-train_pred_area_lasso)^2))
+
+model_ridge = cv.glmnet(area~rain+wind+temp+RH+DC+ISI+FFMC+month+day,
+               data=data_norm[train.index,], nfolds=10, use.model.frame = T, alpha = 0)
+
+lam_ridge = model_ridge$lambda.min
+
+train_pred_area_ridge = as.numeric(denormalize(predict(model_ridge, s=lam_ridge, data_norm[train.index,], exact=TRUE),min(data$area),max(data$area)))
+
+sqrt(mean((data[train.index,'area']-train_pred_area_ridge)^2))
+
+# as per initial hypothesis - linear models are found to be unfit for this case. 
 ```
 
-K-Nearest Neighbour regression
+### 2. k-Nearest Neighbours Regression
 ```{r}
 library(onehot)
 library(class)
@@ -171,15 +220,15 @@ library(FNN)
 library(Metrics)
 
 #encode factors for KNN
-data$month = as.factor(data$month)
-data$day = as.factor(data$day)
+data_norm$month = as.factor(data_norm$month)
+data_norm$day = as.factor(data_norm$day)
 
-encoder = onehot(data, max_levels = 100)
-knn_data = as.data.frame(predict(encoder, data))
+encoder = onehot(data_norm, max_levels = 100)
+knn_data = as.data.frame(predict(encoder, data_norm))
 
 #separate train and test for KNN
-train_knn = knn_data[1:400,]
-test_knn = knn_data[401:517,]
+train_knn = knn_data[train.index,]
+test_knn = knn_data[-train.index,]
 
 #Optimal K
 ks = 1:30
@@ -187,99 +236,151 @@ mse.train = numeric(length=length(ks))
 mse.test  = numeric(length=length(ks))
 
 for (i in seq(along=ks)) {
-  model.train = knn.reg(train_knn, train_knn, train_knn$X, k=ks[i])
-  model.test  = knn.reg(train_knn, test_knn, train_knn$X, k=ks[i])
-  mse.train[i] = mean((train_knn$X - model.train$pred)^2)
-  mse.test[i] = mean((test_knn$X - model.test$pred)^2)
+  model.train = knn.reg(train_knn, train_knn, train_knn$area, k=ks[i])
+  model.test  = knn.reg(train_knn, test_knn, train_knn$area, k=ks[i])
+  mse.train[i] = mean((train_knn$area - model.train$pred)^2)
+  mse.test[i] = mean((test_knn$area - model.test$pred)^2)
 }
 
 k.opt = ks[which.min(mse.test)]
 
 #training KNN regression
 
-knn_pred = knn.reg(train_knn, test_knn, train_knn$X, k=k.opt)
-knn_rmse = rmse(test_knn$X, knn_pred$pred)
-knn_rmse # 2.47
-
+knn_pred = knn.reg(train_knn, test_knn, train_knn$area, k=k.opt)
+knn_rmse = rmse(test_knn$area, as.numeric(denormalize(knn_pred$pred,min(data$area), max(data$area))))
+knn_rmse # 15.3
 ```
 
 
-Support Vector Machines
+### 3. Support Vector Machines
 ```{r}
 #### Support Vector Machines 
 
 library(e1071)
-train_data = data[1:400,]
-test_data = data[401:517,]
+
+train_data = data_norm[train.index,]
+test_data = data_norm[-train.index,]
 
 #linear kernel
-svm_linear = svm(X ~ ., data=train_data, kernel = 'linear', cost = 1)
+svm_linear = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
-svm_lin_rmse = rmse(test_data$X, pred.linear)
-svm_lin_rmse # 2.4 
+pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(data$area), max(data$area)))
+svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
+svm_lin_rmse # 7.4
 
-tune_linear = tune(svm, X ~ .,  data = train_data, kernel='linear',
+tune_linear = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='linear',
                        ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6)))
 tuned_linear = tune_linear$best.model
 tuned_linear_pred = predict(tuned_linear, test_data) 
-svm_lin_tuned_rmse = rmse(test_data$X, tuned_linear_pred)
-svm_lin_tuned_rmse # 2.16
+tuned.pred.linear.denormalized = as.numeric(denormalize(tuned_linear_pred,min(data$area), max(data$area)))
+svm_lin_tuned_rmse = rmse(test_data$area, tuned.pred.linear.denormalized)
+svm_lin_tuned_rmse # 14.8
 
 #polynomial kernel
-svm_poly = svm(X ~ ., data=train_data, kernel = 'polynomial', cost = 1)
+svm_poly = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'polynomial', cost = 1)
 pred.poly = predict(svm_poly, test_data)
-svm_poly_rmse = rmse(test_data$X, pred.poly)
-svm_poly_rmse # 61.6
+pred.poly.denormalized = as.numeric(denormalize(pred.poly,min(data$area), max(data$area)))
+svm_poly_rmse = rmse(test_data$area, pred.poly.denormalized)
+svm_poly_rmse # 33.1
 
-tune_poly = tune(svm, X ~ .,  data = train_data, kernel='polynomial',
+tune_poly = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='polynomial',
                    ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6)))
 tuned_poly = tune_poly$best.model
 tuned_poly_pred = predict(tuned_poly, test_data) 
-svm_poly_tuned_rmse = rmse(test_data$X, tuned_poly_pred)
-svm_poly_tuned_rmse # 51.9
+tuned.pred.poly.denormalized = as.numeric(denormalize(tuned_poly_pred,min(data$area), max(data$area)))
+svm_poly_tuned_rmse = rmse(test_data$area, tuned.pred.poly.denormalized)
+svm_poly_tuned_rmse # 30.8
 
 #RBF kernel
-svm_rbf = svm(X ~ ., data=train_data, kernel = 'radial', cost = 1)
+svm_rbf = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'radial', cost = 1)
 pred.rbf = predict(svm_rbf, test_data)
-svm_rbf_rmse = rmse(test_data$X, pred.rbf)
-svm_rbf_rmse # 2.12
+pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(data$area), max(data$area)))
+svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
+svm_rbf_rmse # 7.6
 
-tune_rbf = tune(svm, X ~ .,  data = train_data, kernel='radial',
+tune_rbf = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8)))
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
-svm_rbf_tuned_rmse = rmse(test_data$X, tuned_rbf_pred)
-svm_rbf_tuned_rmse # 2.09
+tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(data$area), max(data$area)))
+svm_rbf_tuned_rmse = rmse(test_data$area, tuned.pred.rbf.denormalized)
+svm_rbf_tuned_rmse # 17.5
 
 #Sigmoid kernel
-svm_sigmoid = svm(X ~ ., data=train_data, kernel = 'sigmoid', cost = 1)
+svm_sigmoid = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'sigmoid', cost = 1)
 pred.sigmoid = predict(svm_sigmoid, test_data)
-svm_sigmoid_rmse = rmse(test_data$X, pred.sigmoid)
-svm_sigmoid_rmse # 2.22
+pred.sigmoid.denormalized = as.numeric(denormalize(pred.sigmoid,min(data$area), max(data$area)))
+svm_sigmoid_rmse = rmse(test_data$area, pred.sigmoid.denormalized)
+svm_sigmoid_rmse 
 
-tune_sigmoid = tune(svm, X ~ .,  data = train_data, kernel='sigmoid',
+tune_sigmoid = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='sigmoid',
                 ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8)))
 tuned_sigmoid = tune_sigmoid$best.model
 tuned_sigmoid_pred = predict(tuned_sigmoid, test_data) 
-svm_sigmoid_tuned_rmse = rmse(test_data$X, tuned_sigmoid_pred)
-svm_sigmoid_tuned_rmse # 3.6
+tuned.pred.sigmoid.denormalized = as.numeric(denormalize(tuned_sigmoid_pred,min(data$area), max(data$area)))
+svm_sigmoid_tuned_rmse = rmse(test_data$area, tuned.pred.sigmoid.denormalized)
+svm_sigmoid_tuned_rmse 
 
 ```
 
 
-2. Random Forest
+### 4. Random Forest
 ```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
+library("randomForest")
+
+# tune random forest (mtry) manually
+mse.rfs <- rep(0, 12) # repeat '0' 12 times
+
+for(m in 1:12){
+    set.seed(12345)
+    rf <- randomForest(area ~ ., data = data, subset = train.index, ntree=501, mtry=m)
+    mse.rfs[m] <- rf$mse[501]
+}
+
+plot(1:12, mse.rfs, type = "b", xlab="mtry", ylab="OOB Error")
+
+# fit a random forest model
+set.seed(12345)
+model.rf <- randomForest(area ~ ., data = data, subset=train.index, ntree=501, mtry=1)
+plot(model.rf)
+
+# predict
+pred.rf <- predict(model.rf, newdata=data[test.index,]) 
+
+# rmse in test data
+rmse(pred.rf, data[test.index,"area"]) # ~29.21
 ```
 
-3. XGBoost
+### 5a. XGBoost
 ```{r xgboost, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
+
+# fit a boosting model with optimal parameters - from running 9-xgboost_tuning.R with dtrain as input
+max_depth.opt <- 2
+eta.opt <- 0.005
+subsample.opt <- 1
+colsample.opt <- 1
+nrounds.opt <- 134
+
+set.seed(12345)
+model.xgb <- xgboost(data=dtrain, objective="reg:linear", nrounds=nrounds.opt, max_depth = max_depth.opt, eta=eta.opt, subsample=subsample.opt, colsample_bytree=colsample.opt , verbose=0)
+
+# predict
+pred.xgb <- predict(model.xgb, x.test)
+
+# rmse
+rmse(pred.xgb, y.test) # ~36.87052
 ```
 
-4. Ensemble 
+### 5b. XGBoost Variable Importance Plot
+```{r xgb varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+
+importance_matrix <- xgb.importance(model = model.xgb, feature_names = colnames(x.train))
+importance_matrix
+xgb.plot.importance(importance_matrix=importance_matrix)
+
+```
+
+### 6. Ensemble 
 ```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 set.seed(17)
@@ -299,7 +400,7 @@ models <- caretList(area~., data=ensemble_train, metric = 'RMSE', trControl=cont
 models_perf <- resamples(models)
 modelCor(models_perf)
 
-stack_control <- trainControl(method = 'repeatedCV', number = 2, repeats = 5)
+stack_control <- trainControl(method = 'repeatedcv', number = 2, repeats = 5)
 
 stack_lm <- caretStack(models, method='lm',  trControl=stack_control)
 
@@ -347,6 +448,4 @@ manual_stack_accuracy
 In proper APA/MLA format.
 
 1. P. Cortez and A. Morais. A Data Mining Approach to Predict Forest Fires using Meteorological Data. In J. Neves, M. F. Santos and J. Machado Eds., New Trends in Artificial Intelligence, Proceedings of the 13th EPIA 2007 - Portuguese Conference on Artificial Intelligence, December, Guimaraes, Portugal, pp. 512-523, 2007. APPIA, ISBN-13 978-989-95618-0-9. Available at:http://www3.dsi.uminho.pt/pcortez/fires.pdf
-
-2.
 
