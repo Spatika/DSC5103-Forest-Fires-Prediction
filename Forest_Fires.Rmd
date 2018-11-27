@@ -403,7 +403,7 @@ models <- caretList(area~., data=ensemble_train, metric = 'RMSE', trControl=cont
 models_perf <- resamples(models)
 modelCor(models_perf)
 
-stack_control <- trainControl(method = 'repeatedCV', number = 2, repeats = 5)
+stack_control <- trainControl(method = 'repeatedcv', number = 2, repeats = 5)
 
 stack_lm <- caretStack(models, method='lm',  trControl=stack_control)
 
