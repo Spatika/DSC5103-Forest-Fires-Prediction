@@ -60,14 +60,14 @@ We did some initial EDA and visualization to get an idea of our next steps: the 
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 library(tidyverse)
-#library(formatR)
 library(psych)
 library(caretEnsemble)
 library(caret)
 library(corrplot)
+library(ModelMetrics)
 
 # load data
-data <- read.csv(file = "forestfires.csv", stringsAsFactors = T)
+data <- read.csv(file = "data/forestfires.csv", stringsAsFactors = T)
 
 summary(data)
 str(data)
@@ -83,7 +83,7 @@ ggplot(data,aes(data$area)) + geom_histogram()
 
 ### EDA
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-describe(data)
+# describe(data)
 
 #columns
 names(data)
@@ -95,16 +95,16 @@ names(Filter(is.factor,data))
 #check NAs
 sum(is.na(data))
 
-#check correlation - there are some colinearity based on which we might drop features
+# check correlation - there are some colinearity based on which we might drop features
 corPlot(Filter(is.numeric,data))
 
-#Visualize realtion between target and major predictors
+# visualize relation between target and major predictors
 pairs(dplyr::select(data,c('rain', 'wind', 'temp', 'RH', 'area', 'DC', 'ISI', 'FFMC')))
 
-#Day/Month wise incidents
+# day/month wise incidents
 plot(data$day, col='purple')
 plot(data$month, col='purple')
-#there are more incidents on weekends, it might mean that campers vactioning might have caused/spotted fires
+# there are more incidents on weekends (fri/sat/sun), it might mean that campers vactioning might have caused/spotted fires
 
 
 #Day/Month wise area Burnt 
@@ -124,9 +124,9 @@ Next, we will prepare the training and test dataset, as well as the 10 CV folds,
 N <- nrow(data)
 set.seed(1)
 train.index <- sample(1:N, round(N*0.7))
-test.index <- - train.index
+test.index <- -train.index
 
-#create a normalize copy of data
+# create a normalized copy of data
 normalize_c = function(x) {
   return ((x - min(x)) / (max(x) - min(x)))
 }
@@ -197,10 +197,10 @@ train_pred_area_ridge = as.numeric(denormalize(predict(model_ridge, s=lam_ridge,
 
 sqrt(mean((data[train.index,'area']-train_pred_area_ridge)^2))
 
-#my intial suspicion is proved that linear models are unfit for this case. 
+# my intial suspicion is proved that linear models are unfit for this case. 
 ```
 
-K-Nearest Neighbour regression
+2. k-Nearest Neighbours Regression
 ```{r}
 library(onehot)
 library(class)
@@ -242,7 +242,7 @@ knn_rmse # 2.47
 ```
 
 
-Support Vector Machines
+3. Support Vector Machines
 ```{r}
 #### Support Vector Machines 
 
@@ -306,19 +306,40 @@ svm_sigmoid_tuned_rmse # 3.6
 ```
 
 
-2. Random Forest
+4. Random Forest
 ```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# x.test <- heart[test.index, 1:13]
-# y.test <- heart[test.index, 14]
+library("randomForest")
+
+# tune random forest (mtry) manually
+mse.rfs <- rep(0, 12) # repeat '0' 12 times
+
+for(m in 1:12){
+    set.seed(12345)
+    rf <- randomForest(area ~ ., data = data, subset = train.index, ntree=501, mtry=m)
+    mse.rfs[m] <- rf$mse[501]
+}
+
+plot(1:12, mse.rfs, type = "b", xlab="mtry", ylab="OOB Error")
+
+# fit a random forest model
+set.seed(12345)
+model.rf <- randomForest(area ~ ., data = data, subset=train.index, ntree=501, mtry=1)
+plot(model.rf)
+
+# predict
+pred.rf <- predict(model.rf, newdata=data[test.index,]) 
+
+# rmse in test data
+rmse(pred.rf, data[test.index,"area"]) # ~29.21
 ```
 
-3. XGBoost
+5. XGBoost
 ```{r xgboost, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 # x.test <- heart[test.index, 1:13]
 # y.test <- heart[test.index, 14]
 ```
 
-4. Ensemble 
+6. Ensemble 
 ```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 area_corr <- cor(dplyr::select(data, -c("month","day")))
