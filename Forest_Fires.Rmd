@@ -209,15 +209,15 @@ library(FNN)
 library(Metrics)
 
 #encode factors for KNN
-data$month = as.factor(data$month)
-data$day = as.factor(data$day)
+data_norm$month = as.factor(data_norm$month)
+data_norm$day = as.factor(data_norm$day)
 
-encoder = onehot(data, max_levels = 100)
-knn_data = as.data.frame(predict(encoder, data))
+encoder = onehot(data_norm, max_levels = 100)
+knn_data = as.data.frame(predict(encoder, data_norm))
 
 #separate train and test for KNN
-train_knn = knn_data[1:400,]
-test_knn = knn_data[401:517,]
+train_knn = knn_data[train.index,]
+test_knn = knn_data[-train.index,]
 
 #Optimal K
 ks = 1:30
@@ -225,20 +225,19 @@ mse.train = numeric(length=length(ks))
 mse.test  = numeric(length=length(ks))
 
 for (i in seq(along=ks)) {
-  model.train = knn.reg(train_knn, train_knn, train_knn$X, k=ks[i])
-  model.test  = knn.reg(train_knn, test_knn, train_knn$X, k=ks[i])
-  mse.train[i] = mean((train_knn$X - model.train$pred)^2)
-  mse.test[i] = mean((test_knn$X - model.test$pred)^2)
+  model.train = knn.reg(train_knn, train_knn, train_knn$area, k=ks[i])
+  model.test  = knn.reg(train_knn, test_knn, train_knn$area, k=ks[i])
+  mse.train[i] = mean((train_knn$area - model.train$pred)^2)
+  mse.test[i] = mean((test_knn$area - model.test$pred)^2)
 }
 
 k.opt = ks[which.min(mse.test)]
 
 #training KNN regression
 
-knn_pred = knn.reg(train_knn, test_knn, train_knn$X, k=k.opt)
-knn_rmse = rmse(test_knn$X, knn_pred$pred)
-knn_rmse # 2.47
-
+knn_pred = knn.reg(train_knn, test_knn, train_knn$area, k=k.opt)
+knn_rmse = rmse(test_knn$area, as.numeric(denormalize(knn_pred$pred,min(data$area), max(data$area))))
+knn_rmse # 15.3
 ```
 
 
@@ -248,60 +247,68 @@ knn_rmse # 2.47
 
 library(e1071)
 
-train_data = data[1:400,]
-test_data = data[401:517,]
+train_data = data_norm[train.index,]
+test_data = data_norm[-train.index,]
 
 #linear kernel
-svm_linear = svm(X ~ ., data=train_data, kernel = 'linear', cost = 1)
+svm_linear = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
-svm_lin_rmse = rmse(test_data$X, pred.linear)
-svm_lin_rmse # 2.4 
+pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(data$area), max(data$area)))
+svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
+svm_lin_rmse # 7.4
 
-tune_linear = tune(svm, X ~ .,  data = train_data, kernel='linear',
+tune_linear = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='linear',
                        ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6)))
 tuned_linear = tune_linear$best.model
 tuned_linear_pred = predict(tuned_linear, test_data) 
-svm_lin_tuned_rmse = rmse(test_data$X, tuned_linear_pred)
-svm_lin_tuned_rmse # 2.16
+tuned.pred.linear.denormalized = as.numeric(denormalize(tuned_linear_pred,min(data$area), max(data$area)))
+svm_lin_tuned_rmse = rmse(test_data$area, tuned.pred.linear.denormalized)
+svm_lin_tuned_rmse # 14.8
 
 #polynomial kernel
-svm_poly = svm(X ~ ., data=train_data, kernel = 'polynomial', cost = 1)
+svm_poly = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'polynomial', cost = 1)
 pred.poly = predict(svm_poly, test_data)
-svm_poly_rmse = rmse(test_data$X, pred.poly)
-svm_poly_rmse # 61.6
+pred.poly.denormalized = as.numeric(denormalize(pred.poly,min(data$area), max(data$area)))
+svm_poly_rmse = rmse(test_data$area, pred.poly.denormalized)
+svm_poly_rmse # 33.1
 
-tune_poly = tune(svm, X ~ .,  data = train_data, kernel='polynomial',
+tune_poly = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='polynomial',
                    ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6)))
 tuned_poly = tune_poly$best.model
 tuned_poly_pred = predict(tuned_poly, test_data) 
-svm_poly_tuned_rmse = rmse(test_data$X, tuned_poly_pred)
-svm_poly_tuned_rmse # 51.9
+tuned.pred.poly.denormalized = as.numeric(denormalize(tuned_poly_pred,min(data$area), max(data$area)))
+svm_poly_tuned_rmse = rmse(test_data$area, tuned.pred.poly.denormalized)
+svm_poly_tuned_rmse # 30.8
 
 #RBF kernel
-svm_rbf = svm(X ~ ., data=train_data, kernel = 'radial', cost = 1)
+svm_rbf = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'radial', cost = 1)
 pred.rbf = predict(svm_rbf, test_data)
-svm_rbf_rmse = rmse(test_data$X, pred.rbf)
-svm_rbf_rmse # 2.12
+pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(data$area), max(data$area)))
+svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
+svm_rbf_rmse # 7.6
 
-tune_rbf = tune(svm, X ~ .,  data = train_data, kernel='radial',
+tune_rbf = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8)))
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
-svm_rbf_tuned_rmse = rmse(test_data$X, tuned_rbf_pred)
-svm_rbf_tuned_rmse # 2.09
+tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(data$area), max(data$area)))
+svm_rbf_tuned_rmse = rmse(test_data$area, tuned.pred.rbf.denormalized)
+svm_rbf_tuned_rmse # 17.5
 
 #Sigmoid kernel
-svm_sigmoid = svm(X ~ ., data=train_data, kernel = 'sigmoid', cost = 1)
+svm_sigmoid = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'sigmoid', cost = 1)
 pred.sigmoid = predict(svm_sigmoid, test_data)
-svm_sigmoid_rmse = rmse(test_data$X, pred.sigmoid)
-svm_sigmoid_rmse # 2.22
+pred.sigmoid.denormalized = as.numeric(denormalize(pred.sigmoid,min(data$area), max(data$area)))
+svm_sigmoid_rmse = rmse(test_data$area, pred.sigmoid.denormalized)
+svm_sigmoid_rmse 
 
-tune_sigmoid = tune(svm, X ~ .,  data = train_data, kernel='sigmoid',
+tune_sigmoid = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='sigmoid',
                 ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8)))
 tuned_sigmoid = tune_sigmoid$best.model
 tuned_sigmoid_pred = predict(tuned_sigmoid, test_data) 
-svm_sigmoid_tuned_rmse = rmse(test_data$X, tuned_sigmoid_pred)
-svm_sigmoid_tuned_rmse # 3.6
+tuned.pred.sigmoid.denormalized = as.numeric(denormalize(tuned_sigmoid_pred,min(data$area), max(data$area)))
+svm_sigmoid_tuned_rmse = rmse(test_data$area, tuned.pred.sigmoid.denormalized)
+svm_sigmoid_tuned_rmse 
 
 ```
 
