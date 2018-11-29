@@ -32,9 +32,10 @@ We will be studying the following problem(s):
     + This data can be obtained in real-time, and is non-costly, and this prediction can provide instant feedback to the appropriate diaster response teams.
     + Could be possibly be imbalanced problem, if converted to multi-class classification.
 
+## Motivation
+With forest fires sweeping Southern California, leaving much destruction in their wake, there is need for a tool such as ours to improve firefighting resource management and disaster response. Spin some more stuff on why this work is important, and why we chose it/use case - what Xs you will get in the future to predict this Y.
 
-### Evaluation Metrics
-
+## Evaluation Metrics
 Need to do some work on which one would be appropriate based on problem outlined above.
 
 * Regression - RMSE, MAD
