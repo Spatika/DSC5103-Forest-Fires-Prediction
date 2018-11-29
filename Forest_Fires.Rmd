@@ -44,7 +44,7 @@ The environmental damage, financial and infratstructure loss from forest fires (
 As this is a regression problem, our main evaluation metric is "test" (or validation) RMSE. We also consider MAD - Mean Absolute Devaince. The "test" set is 20% of the original data.
 
 ## Literature Review
-The frame of reference for our regression task is work by *Cortez, P., & Morais, A. D. J. R. (2007)*. They compared performance of SVM, NN and multiple linear regression and RF from the 'rminer' package, with the best performance from SVM using just the four weather variables - rain, wind, temperature and humidity. While this dataset hasn't been studied extensively, similar work in this domain has been done by  *Özbayoğlu, A. M., & Bozer, R. (2012)* [5]. They predicted burned area in hectares, as well as the size-class of the fire as big, medium or small, using SVM and multi-layer perceptrons, with data from 7,920 forest fires in Turkey between 2000 and 2009 (this dataset wasn't accessible to us).
+The frame of reference for our regression task is work by *Cortez, P., & Morais, A. D. J. R. (2007)*. They compared performance of SVM, NN and multiple linear regression and RF from the 'rminer' package, with the best performance from SVM using just the four weather variables - rain, wind, temperature and humidity. While this dataset hasn't been studied extensively, similar work in this domain has been done by  *�zbayoglu, A. M., & Bozer, R. (2012)* [5]. They predicted burned area in hectares, as well as the size-class of the fire as big, medium or small, using SVM and multi-layer perceptrons, with data from 7,920 forest fires in Turkey between 2000 and 2009 (this dataset wasn't accessible to us).
 
 # Exploratory Data Analysis
 We did some initial EDA and visualization to get an idea of our next steps: the required data pre-processing and balancing.
@@ -59,12 +59,7 @@ library(corrplot)
 library(ModelMetrics)
 
 # load data
-<<<<<<< HEAD
-data <- read.csv(file = "forestfires.csv", stringsAsFactors = T)
-
-=======
 data <- read.csv(file = "./data/forestfires.csv", stringsAsFactors = T)
->>>>>>> 7688d9f0f97527e7d731edac21590c6d8007ed95
 summary(data)
 ```
 
@@ -78,7 +73,7 @@ We can see that the data is heavily skewed towards small forest fires. There are
 
 ## EDA
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-describe(data)
+# describe(data)
 
 #columns
 names(data)
@@ -500,5 +495,5 @@ stack_accuracy # 31.47
 
 4. Vidal, J. (2018, July 28). Fire, Fire Everywhere: The 2018 Global Wildfire Season Is Already Disastrous. Retrieved from https://www.huffingtonpost.in/entry/fire-fire-everywhere-the-2018-global-wildfire-season-is-already-disastrous_us_5b5a1271e4b0de86f494ed28
 
-5. Özbayoğlu, A. M., & Bozer, R. (2012). Estimation of the burned area in forest fires using computational intelligence techniques. Procedia Computer Science, 12, 282-287.
+5. �zbayoglu, A. M., & Bozer, R. (2012). Estimation of the burned area in forest fires using computational intelligence techniques. Procedia Computer Science, 12, 282-287.
 
