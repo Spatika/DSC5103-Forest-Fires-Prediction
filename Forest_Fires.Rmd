@@ -317,18 +317,18 @@ svm_rbf_rmse # 9.3
 
 
 #Tuning RBF kernel
-<<<<<<< HEAD
+
 tune_rbf = tune(svm, area ~ .,  data = data_norm[train.index,], kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), 
                  control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,
                                         fix = 2/3,nrepeat = 2)))
-||||||| merged common ancestors
+
 tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
-=======
+
 tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE, fix = 2/3,nrepeat = 2)))
->>>>>>> 8509d39393fe651f4432cbda72df34a4e59fc51f
+
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, data[test.index,]) 
 tuned.pred.rbf.denormalized = denormalize(tuned_rbf_pred,min(data$area),max(data$area))
@@ -371,8 +371,8 @@ pred.rf.train <- denormalize(pred.rf.train, min(data$area), max(data$area))
 pred.rf <- denormalize(pred.rf, min(data$area), max(data$area))
 
 # rmse in train and test data
-rmse(pred.rf.train, data_norm[train.index,'area']) 
-rmse(pred.rf, data_norm[test.index,'area'])
+rmse(pred.rf.train, data[train.index,'area']) 
+rmse(pred.rf, data[test.index,'area'])
 ```
 
 ### RF Variable Importance Plot
