@@ -449,14 +449,14 @@ stack_accuracy # 30
 
 set.seed(17)
 
-models_varimp <- caretList(log_area ~ temp + wind + rain, data=data_norm[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
+models_varimp <- caretList(log_area ~ temp + wind + rain, data=data[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
 
 models_perf_varimp <- resamples(models)
 modelCor(models_perf_varimp)
 
 stack_lm_varimp <- caretStack(models_varimp, method='lm',  trControl=stack_control)
 
-pred_stack_varimp <- predict(stack_lm_varimp, data_norm[test.index,])
+pred_stack_varimp <- predict(stack_lm_varimp, data[test.index,])
 
 # inverse log - 1
 pred_stack_varimp <- exp(pred_stack_varimp) - 1
