@@ -41,7 +41,7 @@ We work on the following regression problem:
 The environmental damage, financial and infratstructure loss from forest fires (or wildfires) can be staggering. Reports from CoreLogic, a property and consumer information provider, estimate that the loss from the 2018 California Wildfires is between 15 and 19 billion USD [3]. With forest fires sweeping the globe and worsening forest fire seasons [4], there is need for a tool such as this to improve firefighting resource management and disaster response. For example, when there are simultaneous occurrences of wildfires, we would be able to prioritize and allocate resources appropriately: ground crew could respond to fires judged to be "smaller", with air support diverted to locations of larger fires.
 
 ## Evaluation Metrics
-As this is a regression problem, our main evaluation metric is RMSE. We also consider MAD.
+As this is a regression problem, our main evaluation metric is "test" (or validation) RMSE. We also consider MAD - Mean Absolute Devaince. The "test" set is 20% of the original data.
 
 ## Literature Review
 The frame of reference for our regression task is work by *Cortez, P., & Morais, A. D. J. R. (2007)*. They compared performance of SVM, NN and multiple linear regression and RF from the 'rminer' package, with the best performance from SVM using just the four weather variables - rain, wind, temperature and humidity. While this dataset hasn't been studied extensively, similar work in this domain has been done by  *Özbayoğlu, A. M., & Bozer, R. (2012)* [5]. They predicted burned area in hectares, as well as the size-class of the fire as big, medium or small, using SVM and multi-layer perceptrons, with data from 7,920 forest fires in Turkey between 2000 and 2009 (this dataset wasn't accessible to us).
@@ -191,48 +191,55 @@ library(MASS)
 library(boot)
 
 model_lm = glm(log_area ~ .,
-               data=data_norm[train.index,], family = 'gaussian')
+               data=data[train.index,], family = 'gaussian')
 summary(model_lm)
 glm.diag.plots(model_lm)
 
-# cook's statistics shows that few outliers are heavily affecting prediction
+# Cook's statistics shows that few outliers are heavily affecting prediction
 # As shown in the histogram of area, there many values at 0 but few cases with very high area burnt such as 900-1100 ha
 # We can't remove these outliers as these are also cases which we are trying to predict
 
 # Residuals plot shows a very flat, instead of a uniform distribution again because of extreme outlier influence
 
-# this means linear regression models will not be good for this case
-
 # inverse log - 1
-train_pred_area_lm <- exp(model_lm$fitted.values) - 1
-rmse(train_pred_area_lm, area_ha[train.index])
+test_pred_area_lm <- exp(predict(model_lm, newdata = data[test.index,])) - 1
+rmse(test_pred_area_lm, area_ha[test.index]) # 13.27
 
-model_step = stepAIC(model_lm, direction = 'both')
-model_step$anova
+##############
+## STEP AIC ##
+##############
+model_step <- stepAIC(model_lm, direction = 'both')
+model_step
 
-train_pred_area_step = as.numeric(denormalize(model_step$fitted.values,min(data$area), max(data$area)))
+test_pred_area_step <- exp(predict(model_step, newdata = data[test.index,])) - 1
+rmse(test_pred_area_step, area_ha[test.index])
 
-sqrt(mean((data[train.index,'area']-train_pred_area_step)^2))
+###########
+## LASSO ##
+###########
 
-model_lasso = cv.glmnet(area~.,
-               data=data_norm[train.index,], nfolds=10, use.model.frame = T, alpha = 1)
+model_lasso = cv.glmnet(log_area~.,
+               data=data[train.index,], nfolds=10, use.model.frame = T, alpha = 1)
 
 lam_lasso = model_lasso$lambda.min
 
-train_pred_area_lasso = as.numeric(denormalize(predict(model_lasso, s=lam_lasso, data_norm[train.index,], exact=TRUE),min(data$area),max(data$area)))
+# TEST PREDICTIONS 
+test_pred_area_lasso = exp(predict(model_lasso, s=lam_lasso, newdata = data[test.index,], exact=TRUE)) - 1
+rmse(test_pred_area_lasso, area_ha[test.index]) # ~13
 
-sqrt(mean((data[train.index,'area']-train_pred_area_lasso)^2))
 
-model_ridge = cv.glmnet(area~rain+wind+temp+RH+DC+ISI+FFMC+month+day,
-               data=data_norm[train.index,], nfolds=10, use.model.frame = T, alpha = 0)
+###########
+## RIDGE ##
+###########
+model_ridge = cv.glmnet(log_area~.,
+               data=data[train.index,], nfolds=10, use.model.frame = T, alpha = 0)
 
 lam_ridge = model_ridge$lambda.min
 
-train_pred_area_ridge = as.numeric(denormalize(predict(model_ridge, s=lam_ridge, data_norm[train.index,], exact=TRUE),min(data$area),max(data$area)))
+# TEST PREDICTIONS 
+test_pred_area_ridge = exp(predict(model_ridge, s=lam_ridge, data[test.index,], exact=TRUE)) - 1
+rmse(test_pred_area_ridge, area_ha[test.index])  # ~13
 
-sqrt(mean((data[train.index,'area']-train_pred_area_ridge)^2))
-
-# as per initial hypothesis - linear models are found to be unfit for this case. 
 ```
 
 ## k-Nearest Neighbours Regression
