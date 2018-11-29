@@ -380,18 +380,24 @@ pred.rf <- predict(model.rf, newdata=data[test.index,])
 pred.rf <- exp(pred.rf) - 1
 
 # rmse in test data
-rmse(pred.rf, area_ha[test.index]) # ~31.4
+rmse(pred.rf, area_ha[test.index]) # 13.5
 ```
 
 ## XGBoost
 ```{r xgboost, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 # fit a boosting model with optimal parameters - from running 9-xgboost_tuning.R with dtrain as input
-max_depth.opt <- 2
-eta.opt <- 0.005
+# max_depth.opt <- 2
+# eta.opt <- 0.005
+# subsample.opt <- 1
+# colsample.opt <- 1
+# nrounds.opt <- 134
+# 
+max_depth.opt <- 1
+eta.opt <- 0.01
 subsample.opt <- 1
-colsample.opt <- 1
-nrounds.opt <- 134
+colsample.opt <- 0.6
+nrounds.opt <- 287
 
 set.seed(12345)
 model.xgb <- xgboost(data=dtrain, objective="reg:linear", nrounds=nrounds.opt, max_depth = max_depth.opt, eta=eta.opt, subsample=subsample.opt, colsample_bytree=colsample.opt , verbose=0)
@@ -403,7 +409,7 @@ pred.xgb <- predict(model.xgb, x.test)
 pred.xgb <- exp(pred.xgb) - 1
 
 # rmse
-rmse(pred.xgb, area_ha[test.index]) # ~25.59
+rmse(pred.xgb, area_ha[test.index]) # ~13.415
 ```
 
 ### XGBoost Variable Importance Plot
@@ -451,7 +457,7 @@ stack_accuracy # 30
 ```
 
 # Results and Model Comparison
-* We select RMSE as our performance metric and observe that both ________ gives us pretty good results as compared to the other models. Hence, we stack the above two models to augment our results. We find that the combination of these also gives a similar positive result.
+* We select RMSE as our performance metric and observe that both __ give us pretty good results as compared to the other models. Hence, we stack the above two models to augment our results. We find that the combination of these also gives a similar positive result.
 * We notice that not all variables are significant in predicting the area (dependent variable) from the correlation plot. Hence we drop all the index and RH and use temp instead which is highly correlated to all. We also drop the X and Y coordinates as these do not seem to affect the area.
 
 ```{r ensemble_varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
