@@ -432,7 +432,6 @@ Using test RMSE as our performance metric, we observe that both k-NN and SVM (li
 ```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
 
 set.seed(17)
-
 folds <- createFolds(data_norm[train.index,"area"], 5)
 
 control <- trainControl(method='repeatedcv', number=5, repeats=2, index=folds, search = 'grid', savePredictions = 'final')
@@ -475,7 +474,7 @@ pred_stack_manual <- predict(manual_stack_model, stack_test_data)
 ## RMSE of Manual Stack Model
 pred_stack_manual_denormalized = denormalize(pred_stack_manual,min(data$area), max(data$area))
 manual_stack_rmse = rmse(pred_stack_manual_denormalized, data[test.index,'area'])
-manual_stack_rmse # 15.27
+manual_stack_rmse 
 
 ```
 
