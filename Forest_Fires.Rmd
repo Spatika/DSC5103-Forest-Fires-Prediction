@@ -380,7 +380,7 @@ pred.rf <- predict(model.rf, newdata=data[test.index,])
 pred.rf <- exp(pred.rf) - 1
 
 # rmse in test data
-rmse(pred.rf, area_ha[test.index]) # ~27.80
+rmse(pred.rf, area_ha[test.index]) # ~31.4
 ```
 
 ## XGBoost
@@ -403,7 +403,7 @@ pred.xgb <- predict(model.xgb, x.test)
 pred.xgb <- exp(pred.xgb) - 1
 
 # rmse
-rmse(pred.xgb, area_ha[test.index]) # ~28.02
+rmse(pred.xgb, area_ha[test.index]) # ~25.59
 ```
 
 ### XGBoost Variable Importance Plot
@@ -426,7 +426,7 @@ folds <- createFolds(data_norm[train.index,"log_area"], 5)
 
 control <- trainControl(method='repeatedcv', number=5, repeats=2, index=folds, search = 'grid', savePredictions = 'final')
 
-algos <- c('svmLinear','knn')
+algos <- c('xgbTree','svmRadial')
 
 models <- caretList(log_area~., data=data_norm[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
 
@@ -435,7 +435,7 @@ modelCor(models_perf)
 
 stack_control <- trainControl(method = 'repeatedcv', number = 2, repeats = 5)
 
-stack_lm <- caretStack(models, method='lm',  trControl=stack_control)
+stack_lm <- caretStack(models, method='xgbTree',  trControl=stack_control)
 
 pred_stack <- predict(stack_lm, data_norm[test.index,])
 
@@ -444,13 +444,13 @@ pred_stack <- exp(pred_stack) - 1
 
 ## RMSE of Stacking Model
 stack_accuracy <- rmse(pred_stack, area_ha[test.index])
-stack_accuracy # 27.78
+stack_accuracy # 31.46
 
 ```
 
 # Results and Model Comparison
-* We select RMSE as our performance metric and observe that both KNN and SVM Linear gives us pretty good results as compared to the other models.Hence, we stack the above two models to augment our results. We find that the combination of these also gives a similar positive result.
-* We notice that not all variables are significant in predicting the area(Dependent Variable) from the correlation plot. Hence we drop all the index and RH and use temp instead which is highly correlated to all. We also drop the X and Y coordinates as these do not seem to affect the area.
+* We select RMSE as our performance metric and observe that both ________ gives us pretty good results as compared to the other models. Hence, we stack the above two models to augment our results. We find that the combination of these also gives a similar positive result.
+* We notice that not all variables are significant in predicting the area (dependent variable) from the correlation plot. Hence we drop all the index and RH and use temp instead which is highly correlated to all. We also drop the X and Y coordinates as these do not seem to affect the area.
 
 ```{r ensemble_varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
 
@@ -458,19 +458,21 @@ stack_accuracy # 27.78
 
 set.seed(17)
 
-models_varimp <- caretList(area ~ temp + wind + rain, data=ensemble_train, metric = 'RMSE', trControl=control, methodList=algos)
+models_varimp <- caretList(log_area ~ temp + wind + rain, data=data_norm[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
 
 models_perf_varimp <- resamples(models)
 modelCor(models_perf_varimp)
 
 stack_lm_varimp <- caretStack(models_varimp, method='lm',  trControl=stack_control)
 
-pred_stack_varimp <- predict(stack_lm_varimp, ensemble_test)
+pred_stack_varimp <- predict(stack_lm_varimp, data_norm[test.index,])
+
+# inverse log - 1
+pred_stack_varimp <- exp(pred_stack_varimp) - 1
 
 ## Accuracy and RMSE of Stacking Model
-stack_accuracy <- RMSE(pred_stack_varimp, ensemble_test$area)
-stack_accuracy # 14.41
-
+stack_accuracy <- RMSE(pred_stack_varimp, area_ha[test.index])
+stack_accuracy # 31.47
 
 ```
 
