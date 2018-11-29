@@ -249,18 +249,18 @@ library(class)
 library(FNN)
 library(Metrics)
 
-#encode factors for KNN
+#Encode factors to dummies for KNN
 data_norm$month = as.factor(data_norm$month)
 data_norm$day = as.factor(data_norm$day)
 
 encoder = onehot(data_norm, max_levels = 100)
 knn_data = as.data.frame(predict(encoder, data_norm))
 
-#separate train and test for KNN
+#Separating train and test for KNN
 train_knn = knn_data[train.index,]
 test_knn = knn_data[-train.index,]
 
-#Optimal K
+#Finding out optimal K
 ks = 1:30
 mse.train = numeric(length=length(ks))
 mse.test  = numeric(length=length(ks))
@@ -274,8 +274,7 @@ for (i in seq(along=ks)) {
 
 k.opt = ks[which.min(mse.test)]
 
-#training KNN regression
-
+#KNN regression
 knn_pred = knn.reg(train_knn, test_knn, train_knn$area, k=k.opt)
 knn_rmse = rmse(test_knn$area, as.numeric(denormalize(knn_pred$pred,min(area_ha), max(area_ha))))
 knn_rmse # 11.6
@@ -290,14 +289,15 @@ library(e1071)
 train_data = data_norm[train.index,]
 test_data = data_norm[-train.index,]
 
-#linear kernel
-svm_linear = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'linear', cost = 1)
+#Linear kernel
+svm_linear = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
 pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha), max(area_ha)))
 svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
 svm_lin_rmse # 7.05
 
-tune_linear = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='linear',
+#Tuning linear kernel
+tune_linear = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='linear',
                        ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_linear = tune_linear$best.model
 tuned_linear_pred = predict(tuned_linear, test_data) 
@@ -307,13 +307,14 @@ svm_lin_tuned_rmse #
 
 
 #RBF kernel
-svm_rbf = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'radial', cost = 1)
+svm_rbf = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'radial', cost = 1)
 pred.rbf = predict(svm_rbf, test_data)
 pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(area_ha), max(area_ha)))
 svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
 svm_rbf_rmse # 7.6
 
-tune_rbf = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='radial',
+#Tuning RBF kernel
+tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
@@ -321,6 +322,7 @@ tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha)
 svm_rbf_tuned_rmse = rmse(test_data$area, tuned.pred.rbf.denormalized)
 svm_rbf_tuned_rmse #
 
+#We also tried Polynomial kernel and Sigmoid kernel, but came to conclusion that Linear and Radial kernels outperform them with this data.
 ```
 
 
