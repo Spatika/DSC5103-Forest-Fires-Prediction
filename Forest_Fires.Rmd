@@ -340,7 +340,7 @@ svm_rbf_rmse # 9.3
 
 #Tuning RBF kernel
 tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='radial',
-                 ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
+                 ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE, fix = 2/3,nrepeat = 2)))
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
 tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha[test.index]), max(area_ha[test.index])))
@@ -387,21 +387,31 @@ rmse(pred.rf.train, area_ha[train.index])
 rmse(pred.rf, area_ha[test.index])
 ```
 
+### RF Variable Importance Plot
+We see that temp, RH (relative humidity), and some of the fire weather indices - DC, DMC and ISI are found to be important in prediction of the burned area. This is consistent with the findings from [1].
+```{r rf varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+
+# variable importance
+importance(model.rf) 
+varImpPlot(model.rf) 
+
+```
+
 ## XGBoost
 ```{r xgboost, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 # fit a boosting model with optimal parameters - from running 9-xgboost_tuning.R with dtrain as input
-# max_depth.opt <- 2
-# eta.opt <- 0.005
-# subsample.opt <- 1
-# colsample.opt <- 1
-# nrounds.opt <- 134
-
-max_depth.opt <- 1
+max_depth.opt <- 2
 eta.opt <- 0.01
 subsample.opt <- 1
-colsample.opt <- 0.6
-nrounds.opt <- 267
+colsample.opt <- 1
+nrounds.opt <- 260
+
+# max_depth.opt <- 1
+# eta.opt <- 0.01
+# subsample.opt <- 1
+# colsample.opt <- 0.6
+# nrounds.opt <- 267
 
 set.seed(12345)
 model.xgb <- xgboost(data=dtrain, objective="reg:linear", nrounds=nrounds.opt, max_depth = max_depth.opt, eta=eta.opt, subsample=subsample.opt, colsample_bytree=colsample.opt , verbose=0)
@@ -498,23 +508,6 @@ stack_accuracy
 * The final model using the important variables produces a similar test RMSE to that observed when using all attributes. Hence, we can say that the burned area is indeed dependent on temperature, wind and rain. The other variables do not contribute much.
 * The best and similar results obtained are by using SVM, KNN or a combination of both.
 
-
-# Multi-Class Classification
-
-## Data Preparation
-```{r multiclass prep, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
-
-# divide data into quartiles and label them
-
-
-```
-
-## Modelling
-```{r multiclass model, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
-
-
-
-```
 
 ## Discussion
 
