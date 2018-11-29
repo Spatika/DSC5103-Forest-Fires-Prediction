@@ -22,15 +22,15 @@ options(width = 100)  # set output width, turn off scientific notation for big n
 ```
 
 # Introduction
-We will be studying the Forest Fires Data Set from https://archive.ics.uci.edu/ml/datasets/forest+fires put together and studied by *P. Cortez and A. Morais (2007)*. This dataset covers meteorological and spatio-temporal data for forest fires in Portugal from 2008, with 13 attributes each for 517 data points. Our target attribute from this is 'area', and the meteorological data is that which is registered by sensors at the moment the fire was detected (or first broke out). The 12 other attributes are described and explored in more detail in section 2. 
+We will be studying the Forest Fires Data Set from https://archive.ics.uci.edu/ml/datasets/forest+fires put together and studied by *P. Cortez and A. Morais (2007)*. This dataset covers meteorological and spatio-temporal data for forest fires in Portugal from 2008, with 13 attributes each for 517 such incidents. Our target attribute from this is 'area', and the meteorological data is that which is registered by sensors at the moment the fire was detected (or first broke out). The 12 other attributes are described and explored in more detail in section 2. 
 
 ## Problem 
 
-We will be studying the following problem(s):
+We work on the following problem:
 
-* Predict the burned area of a forest fire, given the prevailing meteorological conditions.
+* Predict the burned area of a forest fire, given the prevailing meteorological conditions at the time of fire detection.
     + This data can be obtained in real-time, and is non-costly, and this prediction can provide instant feedback to the appropriate diaster response teams.
-    + Could be possibly be imbalanced problem, if converted to multi-class classification.
+    + Could also be re-framed as a multi-class classification problem, by dividing the fires into 
 
 ## Motivation
 With forest fires sweeping Southern California, leaving much destruction in their wake, there is need for a tool such as ours to improve firefighting resource management and disaster response. Spin some more stuff on why this work is important, and why we chose it/use case - what Xs you will get in the future to predict this Y.
@@ -422,29 +422,31 @@ area_corr <- cor(dplyr::select(data, -c("month", "day")))
 corrplot(area_corr, method = "circle")
 
 set.seed(17)
-folds <- createFolds(data_norm[train.index,"log_area"], 5)
+# folds <- createFolds(data_norm[train.index,"log_area"], 5)
+data0 <- dplyr::select(data0, -log_area)
+folds <- createFolds(data0[train.index,"area"], 5)
 
 control <- trainControl(method='repeatedcv', number=5, repeats=2, index=folds, search = 'grid', savePredictions = 'final')
 
-algos <- c('xgbTree','svmRadial')
+algos <- c('knn','svmLinear')
 
-models <- caretList(log_area~., data=data_norm[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
+models <- caretList(area~., data=data0[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
 
 models_perf <- resamples(models)
 modelCor(models_perf)
 
 stack_control <- trainControl(method = 'repeatedcv', number = 2, repeats = 5)
 
-stack_lm <- caretStack(models, method='xgbTree',  trControl=stack_control)
+stack_lm <- caretStack(models, method='lm',  trControl=stack_control)
 
-pred_stack <- predict(stack_lm, data_norm[test.index,])
+pred_stack <- predict(stack_lm, data0[test.index,])
 
-# inverse log - 1
-pred_stack <- exp(pred_stack) - 1
+# # inverse log - 1
+# pred_stack <- exp(pred_stack) - 1
 
 ## RMSE of Stacking Model
 stack_accuracy <- rmse(pred_stack, area_ha[test.index])
-stack_accuracy # 31.46
+stack_accuracy # 30
 
 ```
 
@@ -487,6 +489,7 @@ stack_accuracy # 31.47
 ## Data Preparation
 ```{r multiclass prep, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
 
+# divide data into quartiles and label them
 
 
 ```
