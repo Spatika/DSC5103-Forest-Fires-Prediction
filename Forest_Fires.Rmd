@@ -282,8 +282,8 @@ k.opt = ks[which.min(mse.test)]
 #training KNN regression
 
 knn_pred = knn.reg(train_knn, test_knn, train_knn$area, k=k.opt)
-knn_rmse = rmse(test_knn$area, as.numeric(denormalize(knn_pred$pred,min(data$area), max(data$area))))
-knn_rmse # 15.3
+knn_rmse = rmse(test_knn$area, as.numeric(denormalize(knn_pred$pred,min(area_ha), max(area_ha))))
+knn_rmse # 11.6
 ```
 
 
@@ -298,37 +298,23 @@ test_data = data_norm[-train.index,]
 #linear kernel
 svm_linear = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
-pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(data$area), max(data$area)))
+pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha), max(area_ha)))
 svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
-svm_lin_rmse # 7.4
+svm_lin_rmse # 7.05
 
 tune_linear = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='linear',
                        ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_linear = tune_linear$best.model
 tuned_linear_pred = predict(tuned_linear, test_data) 
-tuned.pred.linear.denormalized = as.numeric(denormalize(tuned_linear_pred,min(data$area), max(data$area)))
+tuned.pred.linear.denormalized = as.numeric(denormalize(tuned_linear_pred,min(area_ha), max(area_ha)))
 svm_lin_tuned_rmse = rmse(test_data$area, tuned.pred.linear.denormalized)
-svm_lin_tuned_rmse # 14.8
+svm_lin_tuned_rmse # 
 
-#polynomial kernel
-#svm_poly = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'polynomial', cost = 1)
-#pred.poly = predict(svm_poly, test_data)
-#pred.poly.denormalized = as.numeric(denormalize(pred.poly,min(data$area), max(data$area)))
-#svm_poly_rmse = rmse(test_data$area, pred.poly.denormalized)
-#svm_poly_rmse # 33.1
-
-#tune_poly = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='polynomial',
-#                   ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
-#tuned_poly = tune_poly$best.model
-#uned_poly_pred = predict(tuned_poly, test_data) 
-#tuned.pred.poly.denormalized = as.numeric(denormalize(tuned_poly_pred,min(data$area), max(data$area)))
-#svm_poly_tuned_rmse = rmse(test_data$area, tuned.pred.poly.denormalized)
-#svm_poly_tuned_rmse # 30.8
 
 #RBF kernel
 svm_rbf = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'radial', cost = 1)
 pred.rbf = predict(svm_rbf, test_data)
-pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(data$area), max(data$area)))
+pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(area_ha), max(area_ha)))
 svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
 svm_rbf_rmse # 7.6
 
@@ -336,24 +322,9 @@ tune_rbf = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = t
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
-tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(data$area), max(data$area)))
+tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha), max(area_ha)))
 svm_rbf_tuned_rmse = rmse(test_data$area, tuned.pred.rbf.denormalized)
-svm_rbf_tuned_rmse # 17.5
-
-#Sigmoid kernel
-#svm_sigmoid = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'sigmoid', cost = 1)
-#pred.sigmoid = predict(svm_sigmoid, test_data)
-#pred.sigmoid.denormalized = as.numeric(denormalize(pred.sigmoid,min(data$area), max(data$area)))
-#svm_sigmoid_rmse = rmse(test_data$area, pred.sigmoid.denormalized)
-#svm_sigmoid_rmse 
-
-#tune_sigmoid = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='sigmoid',
-#                ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
-#tuned_sigmoid = tune_sigmoid$best.model
-#tuned_sigmoid_pred = predict(tuned_sigmoid, test_data) 
-#tuned.pred.sigmoid.denormalized = as.numeric(denormalize(tuned_sigmoid_pred,min(data$area), max(data$area)))
-#svm_sigmoid_tuned_rmse = rmse(test_data$area, tuned.pred.sigmoid.denormalized)
-#svm_sigmoid_tuned_rmse 
+svm_rbf_tuned_rmse #
 
 ```
 
