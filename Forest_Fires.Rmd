@@ -23,8 +23,7 @@ comments must be put in an HTML comment form
 -->
 
 ```{r set-options, echo=FALSE, cache=FALSE}
-options(width = 100)  # set output width, turn off scientific notation for big numbers
-#knitr::opts_chunk$set(cache = TRUE) # include=FALSE
+options(width = 100)  # set output width
 ```
 
 ```{r}
