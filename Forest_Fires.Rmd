@@ -433,13 +433,13 @@ xgb.plot.importance(importance_matrix=importance_matrix)
 
 set.seed(17)
 
-folds <- createFolds(data0[train.index,"area"], 5)
+folds <- createFolds(data_norm[train.index,"area"], 5)
 
 control <- trainControl(method='repeatedcv', number=5, repeats=2, index=folds, search = 'grid', savePredictions = 'final')
 
 algos <- c('knn','svmLinear')
 
-models <- caretList(area~., data=data0[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
+models <- caretList(area~., data=data_norm[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
 
 models_perf <- resamples(models)
 modelCor(models_perf)
@@ -448,10 +448,11 @@ stack_control <- trainControl(method = 'repeatedcv', number = 2, repeats = 5)
 
 stack_lm <- caretStack(models, method='lm',  trControl=stack_control)
 
-pred_stack <- predict(stack_lm, data0[test.index,])
+pred_stack <- predict(stack_lm, data_norm[test.index,])
 
 ## RMSE of Stacking Model
-stack_accuracy <- rmse(pred_stack, data0[test.index,'area'])
+pred_stack_denormalized = denormalize(pred_stack,min(data$area), max(data$area))
+stack_accuracy <- rmse(pred_stack_denormalized, data[test.index,'area'])
 stack_accuracy # 13.89
 
 
@@ -473,7 +474,7 @@ manual_stack_model <- glm(area ~ ., data = stack_train_data)
 
 pred_stack_manual <- predict(manual_stack_model, stack_test_data)
 
-
+## RMSE of Manual Stack Model
 pred_stack_manual_denormalized = denormalize(pred_stack_manual,min(data$area), max(data$area))
 manual_stack_rmse = rmse(pred_stack_manual_denormalized, data[test.index,'area'])
 manual_stack_rmse # 15.27
