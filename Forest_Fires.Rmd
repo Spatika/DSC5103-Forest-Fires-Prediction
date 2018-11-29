@@ -77,9 +77,8 @@ summary(data)
 ## Distribution of Target Class
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 ggplot(data,aes(data$area)) + geom_histogram()
-summary(data$area)
 ```
-We can see that the data is heavily skewed towards small forest fires. There are 247 entries with area = 0, for incidents where the resulting burned area was < $100 m^2$. A logarithmic transofrmation of area would be useful in this case, and we can add one to the target column first since $ln(0)$ approaches negative infinity. 
+We can see that the data is heavily skewed towards small forest fires. There are 247 entries with area = 0, for incidents where the resulting burned area was < $100 m^2$. A logarithmic transofrmation of area might be useful in this case, and we can add one to the target column first since $ln(0)$ approaches negative infinity. 
 
 ## Some Visualizations
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
@@ -133,11 +132,11 @@ boxplot(data$area)
 data <- data[!(data$month=='jan' | data$month=='nov' | data$month=='may'),]
 ```
 
-## Feature Selection
-The 'X' and 'Y' attributes are coordinates in the 9x9 grid representing the area of Portugal's Montesinho Park. Specific to this situation - doesn't make sense to use for a generalized tool, and are anyway not found to be crucial in predicting burned area.
 
-## Normalization
-For SVM and k-NN, we use normalized data on the 0-1 scale. Also for proper analysis and model comparison we will use normalized data for all models.
+## Feature Selection and Normalization
+The 'X' and 'Y' attributes are coordinates in the 9x9 grid representing the area of Portugal's Montesinho Park. These coordinates are specific to this situation, and wouldn't generalize to prediction of burned area in other scenarios. These variables were also not found to be crucial to predicting the burned area.
+
+For SVM and k-NN, we need to use normalized data on the 0-1 scale, since these algorithms depend on distance. So for consistency and model comparison we will use normalized data for all models.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 normalize_c = function(x) {
@@ -147,6 +146,9 @@ normalize_c = function(x) {
 denormalize <- function(x, min_x, max_x) {
   return(x * (max_x - min_x) + min_x) 
 }
+
+# Storing original data to data0
+data0 <- dplyr::select(data, -c("X","Y"))
 
 # Xs - normalize all predictors
 data_norm <- data %>% mutate_at(names(Filter(is.numeric, data)), normalize_c) %>% dplyr::select(-c(X,Y))
@@ -159,6 +161,7 @@ summary(data_norm)
 Next, we will prepare the training and test dataset.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
+set.seed(1234)
 # split training and test data 80/20
 train.index <- createDataPartition(data_norm$area, p = 0.8, list = FALSE)
 test.index <- -train.index
@@ -183,6 +186,7 @@ y.test <- data_norm[test.index, "area"]
 # Modelling
 
 ## Elastic Net
+We see that when using stepAIC, the temperature and wind features are selected.
 ```{r glmnet, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 library(glmnetUtils)
 library(MASS)
@@ -215,7 +219,7 @@ model_ridge = cv.glmnet(area~.,
 
 lam_ridge = model_ridge$lambda.min
 
-# TEST PREDICTIONS 
+# test set predictions
 test_pred_area_ridge = denormalize(predict(model_ridge, s=lam_ridge, data_norm[test.index,],
                                            exact=TRUE), min(data$area),max(data$area))
 rmse(test_pred_area_ridge, data[test.index,'area'])  
@@ -229,11 +233,11 @@ model_lasso = cv.glmnet(area~.,
 
 lam_lasso = model_lasso$lambda.min
 
-# TEST PREDICTIONS 
+
+# test set predictions 
 test_pred_area_lasso = denormalize(predict(model_lasso, s=lam_lasso,  data_norm[test.index,], exact=TRUE),
                            min(data$area),max(data$area)) 
 rmse(test_pred_area_lasso, data[test.index,'area'])
-
 
 ```
 
@@ -244,7 +248,7 @@ library(class)
 library(FNN)
 library(Metrics)
 
-#Encode factors to dummies for KNN
+# Encode factors to dummies for KNN
 data_norm$month = as.factor(data_norm$month)
 data_norm$day = as.factor(data_norm$day)
 
@@ -273,11 +277,14 @@ k.opt = ks[which.min(mse.test)]
 knn_pred = knn.reg(train_knn, test_knn, train_knn$area, k=k.opt)
 
 knn_rmse = rmse(denormalize(knn_pred$pred,min(data$area),max(data$area)), data[test.index,'area'])
-knn_rmse # 7.8
+knn_rmse # 7.45
 ```
 
 
 ## Support Vector Machines
+For both k-NN and SVM we first tried predicting log_area, which turned out yielding generally low accuracies. We believe this is due to k-NN and SVM being distance depended algorithms, and so ran the models without logarithmic transformation in the end.
+
+For SVM, we also tried polynomial and sigmoid kernels, but came to conclusion that linear and RBF kernels outperform them with this data. Out of these models, k-NN provides the lowest RMSE, with both SVM radial and linear kernels close behind. 
 ```{r}
 
 library(e1071)
@@ -330,14 +337,14 @@ tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, data[test.index,]) 
 tuned.pred.rbf.denormalized = denormalize(tuned_rbf_pred,min(data$area),max(data$area))
 svm_rbf_tuned_rmse = rmse(tuned.pred.rbf.denormalized, data[test.index,'area'])
-svm_rbf_tuned_rmse #
+svm_rbf_tuned_rmse 
 
 ```
-For both KNN and SVM we first tried predicting log_area, which turned out yielding generally low accuracies. We believe this is due to KNN and SVM being distance depended algorithms, and so ran the models without logarithmic transformation in the end.
 
-For SVM, we also tried polynomial and sigmoid kernels, but came to conclusion that linear and RBF kernels outperform them with this data. Out of these models, KNN provides the lowest RMSE, with both SVM radial and linear kernels close behind. 
 
 ## Random Forest
+For random forest, too, though using the log transformed area was thought to show better results, there wasn't much change to the performance (test RMSE). This could be because the extreme outliers were anyway removed, leading to more symmetry in the data without the transform.
+
 ```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 library("randomForest")
 
@@ -417,6 +424,7 @@ rmse(pred.xgb, data[test.index,'area'])
 ```
 
 ### XGBoost Variable Importance Plot
+For this model, too, temp, RH and DC are important. Additionally, wind and FFMC are found to be important in prediction of the burned area. This is consistent with the feature selection from stepAIC and similar to the variable importance plot of our random forest model above.
 ```{r xgb varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 importance_matrix <- xgb.importance(model = model.xgb, feature_names = colnames(x.train))
@@ -428,12 +436,7 @@ xgb.plot.importance(importance_matrix=importance_matrix)
 ## Ensemble 
 ```{r ensemble, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
 
-area_corr <- cor(dplyr::select(data, -c("month", "day")))
-corrplot(area_corr, method = "circle")
-
 set.seed(17)
-# folds <- createFolds(data_norm[train.index,"log_area"], 5)
-data0 <- dplyr::select(data0, -log_area)
 folds <- createFolds(data0[train.index,"area"], 5)
 
 control <- trainControl(method='repeatedcv', number=5, repeats=2, index=folds, search = 'grid', savePredictions = 'final')
@@ -451,50 +454,41 @@ stack_lm <- caretStack(models, method='lm',  trControl=stack_control)
 
 pred_stack <- predict(stack_lm, data0[test.index,])
 
-# # inverse log - 1
-# pred_stack <- exp(pred_stack) - 1
-
 ## RMSE of Stacking Model
-stack_accuracy <- rmse(pred_stack, area_ha[test.index])
-stack_accuracy # 30
+stack_accuracy <- rmse(pred_stack, data0[test.index,'area'])
+stack_accuracy # 13.89
+
+## Manual Stacking of KNN, SVM Linear
+knn_pred_train = knn.reg(train_knn, train_knn, train_knn$area, k=k.opt)
+pred.linear.train = predict(svm_linear, data_norm[train.index,])
+
+
+stack_train_data <- cbind.data.frame(knn_pred_train$pred,pred.linear.train,data_norm[train.index,'area'])
+stack_test_data <- cbind.data.frame(knn_pred$pred,pred.linear,data_norm[test.index,'area'])
+
+names(stack_train_data) <- c("KNN","SVMLinear","area")
+names(stack_test_data) <- c("KNN","SVMLinear","area")
+
+manual_stack_model <- glm(area ~ ., data = stack_train_data)
+
+## Predicting test on the Manual Stack
+
+pred_stack_manual <- predict(manual_stack_model, stack_test_data)
+
+
+pred_stack_manual_denormalized = denormalize(pred_stack_manual,min(data$area), max(data$area))
+manual_stack_rmse = rmse(pred_stack_manual_denormalized, data[test.index,'area'])
+manual_stack_rmse # 15.27
 
 ```
 
+
 # Results and Model Comparison
-* We test RMSE as our performance metric, we observe that both __ give us pretty good results as compared to the other models. Hence, we stack the above two models to augment our results. We find that the combination of these also gives a similar result.
+* Temperature and wind were both found to be important drivers of burned area prediction; this was common to the linear family (stepAIC) and for RF and XGBoost (using the variable importance plots above).
+* We use test RMSE as our performance metric, we observe that both __ give us pretty good results as compared to the other models. Hence, we stack the above two models to augment our results. We find that the combination of these also gives a similar result.
 * We notice that not all variables are significant in predicting the area (dependent variable) from the correlation plot. Hence we drop all the indices and RH, and instead use temperature.
 * The final model using the important variables produces a similar test RMSE to that observed when using all attributes. Hence, we can say that the burned area is indeed dependent on temperature, wind and rain. The other variables do not contribute much.
 * The best and similar results obtained are by using SVM, KNN or a combination of both.
-* Some key model insights on important variables
-
-```{r ensemble_varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
-# results table
-
-```
-
-```{r ensemble_varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
-
-## Stacking Model with VarImp
-
-set.seed(17)
-
-models_varimp <- caretList(log_area ~ temp + wind + rain, data=data[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
-
-models_perf_varimp <- resamples(models)
-modelCor(models_perf_varimp)
-
-stack_lm_varimp <- caretStack(models_varimp, method='lm',  trControl=stack_control)
-
-pred_stack_varimp <- predict(stack_lm_varimp, data[test.index,])
-
-# inverse log - 1
-pred_stack_varimp <- exp(pred_stack_varimp) - 1
-
-## Accuracy and RMSE of Stacking Model
-stack_accuracy <- RMSE(pred_stack_varimp, area_ha[test.index])
-stack_accuracy 
-
-```
 
 
 # Conclusion and Discussion
