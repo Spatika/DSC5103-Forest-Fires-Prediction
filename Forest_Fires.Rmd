@@ -313,7 +313,7 @@ svm_linear = svm(area ~ ., data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
 pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha[test.index]), max(area_ha[test.index])))
 svm_lin_rmse = rmse(denormalize(test_data$area, min(area_ha[test.index]), max(area_ha[test.index])), pred.linear.denormalized)
-svm_lin_rmse # 9.4
+svm_lin_rmse # 9.34
 
 #Tuning linear kernel
 tune_linear = tune(svm, area ~ .  data = train_data, kernel='linear',
@@ -342,7 +342,9 @@ svm_rbf_tuned_rmse = rmse(denormalize(test_data$area, min(area_ha[test.index]), 
 svm_rbf_tuned_rmse #
 
 ```
-We also tried polynomial and sigmoid kernels, but came to conclusion that linear and RBF kernels outperform them with this data.
+For both KNN and SVM we first tried predicting log_area, which turned out yielding generally low accuracies. We believe this is due to KNN and SVM being distance depended algorithms, and so ran the models without logarithmic transformation in the end.
+
+For SVM, we also tried polynomial and sigmoid kernels, but came to conclusion that linear and RBF kernels outperform them with this data. Out of these models, KNN provides the lowest RMSE, with both SVM radial and linear kernels close behind. 
 
 ## Random Forest
 ```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
