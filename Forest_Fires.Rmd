@@ -71,7 +71,7 @@ summary(data$area)
 ```
 We can see that the data is heavily skewed towards small forest fires. There are 247 entries with area = 0, for incidents where the resulting burned area was < 100 m^2. A logarithmic transofrmation of area would be useful in this case, and we can add one to the target column first since ln(0) approaches negative infinity.
 
-## EDA
+## Some Visualizations
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 # describe(data)
 
@@ -106,6 +106,14 @@ ggplot(data, aes(x=data$day,data$area)) + geom_boxplot(outlier.shape=NA) +
 ```
 
 # Data Preparation
+
+
+## Outlier Detection
+We see from the box plot below that there are 63 outliers (value outside 1.5 times the inter-quartile range) that may skew our results. These are removed.
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+boxplot(data$area)
+outlier_values <- boxplot.stats(data$area)$out
+```
 
 ## Log Transformation
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
@@ -159,6 +167,10 @@ set.seed(17)
 train.index <- createDataPartition(data$log_area, p = 0.8, list = FALSE)
 test.index <- -train.index
 
+# set.seed(1)
+# N <- nrow(data)
+# train.index <- sample(1:N, round(N*0.8))
+# test.index <- - train.index
 ```
 
 Separating the data for GBM use:
@@ -512,6 +524,7 @@ stack_accuracy # 31.47
 
 # Conclusion
 * It is difficult to predict the exact area which would be affected by a forest fire since our data consists of a huge range of area, and small fires tend to be more frequent.
+* Due to the small size of the dataset and the skew towards small forest fires, the results vary noticeably with the train-validation split.
 * We could probably segment the area into different classes of the Severity of Damage (Low, Medium, High and Fatal) and consider it as multi-class problem.
 
 # References
