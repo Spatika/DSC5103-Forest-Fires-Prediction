@@ -12,19 +12,29 @@ output:
     highlight: tango
     theme: yeti
 ---
+
+<style>
+body {
+text-align: justify}
+</style>
+
 <!--
 comments must be put in an HTML comment form
 -->
 
 ```{r set-options, echo=FALSE, cache=FALSE}
 options(width = 100)  # set output width, turn off scientific notation for big numbers
-# knitr::opts_chunk$set(echo = TRUE) # include=FALSE
+knitr::opts_chunk$set(cache = TRUE) # include=FALSE
 ```
 
 # Introduction
 We will be studying the Forest Fires Data Set from https://archive.ics.uci.edu/ml/datasets/forest+fires put together and studied by *Cortez, P., & Morais, A. D. J. R. (2007)* [1]. This dataset covers meteorological and spatio-temporal data for forest fires (between 2000 and 2003) in Portugal's Montesinho Natural Park, with 13 attributes each for 517 such incidents. Our target attribute from these 13 is 'area' - total burned area in hectares (ha). The corresponding weather data is that which is registered by sensors at the moment the fire was detected (or first broke out). We have: temp, RH (realtive humidity), wind (speed), rain (accumulated precipitation over the last 30 minutes). 
 
-We also have DMC, DC, ISI and FFMC are components of the Canadian Forest Fire Weather Index (FWI) System [2], which measures the effects of fuel moisture and wind on fire behaviour. These have been calculated using consecutive daily observations of temperature, relative humidity, wind speed, and 24-hour rainfall - i.e. these are time-lagged and not instantaneous values, unlike the four weather variables. Roughly, the higher these components, the more the expected severity of the fire. 
+&nbsp;
+
+We also have DMC, DC, ISI and FFMC are components of the Canadian Forest Fire Weather Index (FWI) System [2], which measures the effects of fuel moisture and wind on fire behaviour. These have been calculated using consecutive daily observations of temperature, relative humidity, wind speed, and 24-hour rainfall - i.e. these are time-lagged and not instantaneous values, unlike the four weather variables. Roughly, the higher these components, the more the expected severity of the fire.
+
+&nbsp;
 
 Spatio-temporal data includes the month and day of the week that the incident occurred, and X and Y co-ordinates of the incident with respect to the park. As noted in [1], smaller fires are much more frequent. This is the case in this dataset, as well as with incidences of wildfires around the world, making this a difficult regression problem.
 
@@ -44,10 +54,10 @@ The environmental damage, financial and infratstructure loss from forest fires (
 As this is a regression problem, our main evaluation metric is "test" (or validation) RMSE. We also consider MAD - Mean Absolute Devaince. The "test" set is 20% of the original data.
 
 ## Literature Review
-The frame of reference for our regression task is work by *Cortez, P., & Morais, A. D. J. R. (2007)*. They compared performance of SVM, NN and multiple linear regression and RF from the 'rminer' package, with the best performance from SVM using just the four weather variables - rain, wind, temperature and humidity. While this dataset hasn't been studied extensively, similar work in this domain has been done by  *Özbayoğlu, A. M., & Bozer, R. (2012)* [5]. They predicted burned area in hectares, as well as the size-class of the fire as big, medium or small, using SVM and multi-layer perceptrons, with data from 7,920 forest fires in Turkey between 2000 and 2009 (this dataset wasn't accessible to us).
+The frame of reference for our regression task is work by *Cortez, P., & Morais, A. D. J. R. (2007)*. They compared performance of SVM, NN and multiple linear regression and RF from the 'rminer' package, with the best performance from SVM using just the four weather variables - rain, wind, temperature and humidity. While this dataset hasn't been studied extensively, similar work in this domain has been done by  *Özbayoğlu, A. M., & Bozer, R. (2012)* [5]. They predicted burned area in hectares, as well as the size-class of the fire as big, medium or small, using SVM and multi-layer perceptrons, with data from 7,920 forest fires in Turkey between 2000 and 2009 (this dataset wasn't accessible to us). In addition to weather and meteorological data, they used geographic features like the type of trees and number of trees per unit area.
 
 # Exploratory Data Analysis
-We did some initial EDA and visualization to get an idea of our next steps: the required data pre-processing and balancing.
+We did some initial EDA and visualization to get an idea of our next steps: the required data pre-processing.
 
 ## Schema
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
@@ -69,7 +79,7 @@ summary(data)
 ggplot(data,aes(data$area)) + geom_histogram()
 summary(data$area)
 ```
-We can see that the data is heavily skewed towards small forest fires. There are 247 entries with area = 0, for incidents where the resulting burned area was < 100 m^2. A logarithmic transofrmation of area would be useful in this case, and we can add one to the target column first since ln(0) approaches negative infinity.
+We can see that the data is heavily skewed towards small forest fires. There are 247 entries with area = 0, for incidents where the resulting burned area was < $100 m^2$. A logarithmic transofrmation of area would be useful in this case, and we can add one to the target column first since $ln(0)$ approaches negative infinity. 
 
 ## Some Visualizations
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
@@ -107,9 +117,9 @@ ggplot(data, aes(x=data$day,data$area)) + geom_boxplot(outlier.shape=NA) +
 
 # Data Preparation
 
-
 ## Outlier Detection
-We see from the box plot below that there are 63 outliers (value outside 1.5 times the inter-quartile range) that may skew our results. These are removed.
+We see from the box plot below that there are 63 outliers (value outside 1.5 times the inter-quartile range) that may skew our results. These are removed, so that we are predicting burned areas of smaller to medium forest fires. This is reasonable, since these are the more frequently encountered ones.
+
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 boxplot(data$area)
 outlier_values <- boxplot.stats(data$area)$out
@@ -498,7 +508,8 @@ stack_accuracy # 31.47
 # Conclusion
 * It is difficult to predict the exact area which would be affected by a forest fire since our data consists of a huge range of area, and small fires tend to be more frequent.
 * Due to the small size of the dataset and the skew towards small forest fires, the results vary noticeably with the train-validation split.
-* We could probably segment the area into different classes of the Severity of Damage (Low, Medium, High and Fatal) and consider it as multi-class problem.
+* As discussed, before this can be dealt with by labeling the datapoints by their severity (small, medium, big) and considering it as multi-class problem.
+* For pro-active measures, weather forecasts could be used instead to predict the occurrence and burned area of forest fires in the future.
 
 # References
 
