@@ -66,7 +66,7 @@ library(corrplot)
 library(ModelMetrics)
 
 # load data
-data <- read.csv(file = "./data/forestfires.csv", stringsAsFactors = T)
+data <- read.csv(file = "forestfires.csv", stringsAsFactors = T)
 
 summary(data)
 ```
@@ -80,7 +80,7 @@ ggplot(data,aes(data$area)) + geom_histogram()
 
 ### EDA
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-# describe(data)
+describe(data)
 
 #columns
 names(data)
