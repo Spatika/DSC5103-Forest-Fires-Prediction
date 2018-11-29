@@ -54,7 +54,7 @@ The environmental damage, financial and infratstructure loss from forest fires (
 
 
 ## Literature Review
-The frame of reference for our regression task is work by *Cortez, P., & Morais, A. D. J. R. (2007)*. They compared performance of SVM, NN and multiple linear regression and RF from the 'rminer' package, with the best performance from SVM using just the four weather variables - rain, wind, temperature and humidity. While this dataset hasn't been studied extensively, similar work in this domain has been done by  *Özbayoglu, A. M., & Bozer, R. (2012)* [5]. They predicted burned area in hectares, as well as the size-class of the fire as big, medium or small, using SVM and multi-layer perceptrons, with data from 7,920 forest fires in Turkey between 2000 and 2009 (this dataset wasn't accessible to us). In addition to weather and meteorological data, they used geographic features like the type of trees and number of trees per unit area.
+The frame of reference for our regression task is work by *Cortez, P., & Morais, A. D. J. R. (2007)*. They compared performance of SVM, NN and multiple linear regression and RF from the 'rminer' package, with the best performance from SVM using just the four weather variables - rain, wind, temperature and humidity. While this dataset hasn't been studied extensively, similar work in this domain has been done by  *?zbayoglu, A. M., & Bozer, R. (2012)* [5]. They predicted burned area in hectares, as well as the size-class of the fire as big, medium or small, using SVM and multi-layer perceptrons, with data from 7,920 forest fires in Turkey between 2000 and 2009 (this dataset wasn't accessible to us). In addition to weather and meteorological data, they used geographic features like the type of trees and number of trees per unit area.
 
 # Exploratory Data Analysis
 We did some initial EDA and visualization to get a better idea of our next steps and the required data pre-processing.
@@ -463,6 +463,14 @@ stack_accuracy # 30
 # Results and Model Comparison
 * We test RMSE as our performance metric, we observe that both __ give us pretty good results as compared to the other models. Hence, we stack the above two models to augment our results. We find that the combination of these also gives a similar result.
 * We notice that not all variables are significant in predicting the area (dependent variable) from the correlation plot. Hence we drop all the indices and RH, and instead use temperature.
+* The final model using the important variables produces a similar test RMSE to that observed when using all attributes. Hence, we can say that the burned area is indeed dependent on temperature, wind and rain. The other variables do not contribute much.
+* The best and similar results obtained are by using SVM, KNN or a combination of both.
+* Some key model insights on important variables
+
+```{r ensemble_varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
+# results table
+
+```
 
 ```{r ensemble_varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
 
@@ -489,14 +497,8 @@ stack_accuracy
 ```
 
 
-# Insights
-* The final model using the important variables produces a similar test RMSE to that observed when using all attributes. Hence, we can say that the burned area is indeed dependent on temperature, wind and rain. The other variables do not contribute much.
-* The best and similar results obtained are by using SVM, KNN or a combination of both.
+# Conclusion and Discussion
 
-
-## Discussion
-
-# Conclusion
 * It is difficult to predict the exact area which would be affected by a forest fire since our data consists of a huge range of area, and small fires tend to be more frequent.
 * Due to the small size of the dataset and the skew towards small forest fires, the results vary noticeably with the train-validation split.
 * As discussed, before this can be dealt with by labeling the datapoints by their severity (small, medium, big) and considering it as multi-class problem.
