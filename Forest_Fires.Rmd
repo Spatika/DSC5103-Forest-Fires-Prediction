@@ -222,7 +222,7 @@ lam_ridge = model_ridge$lambda.min
 # test set predictions
 test_pred_area_ridge = denormalize(predict(model_ridge, s=lam_ridge, data_norm[test.index,],
                                            exact=TRUE), min(data$area),max(data$area))
-rmse(test_pred_area_ridge, data[test.index,'area'])  
+ridge.rmse <- rmse(test_pred_area_ridge, data[test.index,'area'])  
 
 ###########
 ## LASSO ##
@@ -376,7 +376,7 @@ pred.rf <- denormalize(pred.rf, min(data$area), max(data$area))
 
 # rmse in train and test data
 rmse(pred.rf.train, data[train.index,'area']) 
-rmse(pred.rf, data[test.index,'area'])
+rf.rmse <- rmse(pred.rf, data[test.index,'area'])
 ```
 
 ### RF Variable Importance Plot
@@ -414,7 +414,7 @@ pred.xgb.train <- denormalize(pred.xgb.train,min(data$area),max(data$area))
 
 # rmse
 rmse(pred.xgb.train, data[train.index,'area']) 
-rmse(pred.xgb, data[test.index,'area']) 
+xgb.rmse <- rmse(pred.xgb, data[test.index,'area']) 
 ```
 
 ### XGBoost Variable Importance Plot
@@ -470,7 +470,6 @@ manual_stack_model <- glm(area ~ ., data = stack_train_data)
 
 pred_stack_manual <- predict(manual_stack_model, stack_test_data)
 
-
 pred_stack_manual_denormalized = denormalize(pred_stack_manual,min(data$area), max(data$area))
 manual_stack_rmse = rmse(pred_stack_manual_denormalized, data[test.index,'area'])
 manual_stack_rmse # 15.27
@@ -480,12 +479,23 @@ manual_stack_rmse # 15.27
 
 # Results and Model Comparison
 * Temperature and wind were both found to be important drivers of burned area prediction; this was common to the linear family (stepAIC) and for RF and XGBoost (using the variable importance plots above).
-* The SVM models show decent performance in terms of RMSE, but lower interpretability.
-* Hence, we can say that the burned area is indeed dependent on temperature, wind and rain. The other variables do not contribute much.
-* The best and similar results obtained are by using SVM, KNN or a combination of both.
-```{r results table, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
+* So, based on the selected variables common to the tree and linear family, we find that the burned area is predominantly dependent on temperature, wind and relative humidity - these findings are in line with results in [1].
+* However, additionally, we found DC to be an important predictor:
+* The SVM and k-NN models show decent performance in terms of RMSE, but have lower interpretability.
 
+* The best and similar results obtained are by using SVM, KNN or a combination of both.
+```{r results table, results = 'asis', eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
+
+library(knitr)
+
+models <- c("Linear Family (Ridge)", "k-NN", "SVM Linear", "SVM RBF", "RF", "XGBoost", "Ensemble - Manual Stacking")
+rmses <- c(ridge_rmse, knn_rmse, svm_lin_tuned_rmse, svm_rbf_tuned_rmse, rf.rmse, xgb.rmse, manual_stack_rmse)
+  
+final_results <- data.frame("Model" = models, "Test RMSE" = rmses)
+
+kable(final_results, caption = "Model Comparison")
 ```
+
 
 # Conclusion and Discussion
 
