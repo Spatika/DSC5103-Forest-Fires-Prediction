@@ -291,13 +291,13 @@ train_data = data_norm[train.index,]
 test_data = data_norm[-train.index,]
 
 #linear kernel
-svm_linear = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'linear', cost = 1)
+svm_linear = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
 pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(data$area), max(data$area)))
 svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
 svm_lin_rmse # 7.4
 
-tune_linear = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='linear',
+tune_linear = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='linear',
                        ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_linear = tune_linear$best.model
 tuned_linear_pred = predict(tuned_linear, test_data) 
@@ -321,13 +321,13 @@ svm_lin_tuned_rmse # 14.8
 #svm_poly_tuned_rmse # 30.8
 
 #RBF kernel
-svm_rbf = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'radial', cost = 1)
+svm_rbf = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'radial', cost = 1)
 pred.rbf = predict(svm_rbf, test_data)
 pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(data$area), max(data$area)))
 svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
 svm_rbf_rmse # 7.6
 
-tune_rbf = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='radial',
+tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
