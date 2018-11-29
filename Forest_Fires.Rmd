@@ -478,17 +478,16 @@ manual_stack_rmse # 15.27
 
 
 # Results and Model Comparison
-* Temperature and wind were both found to be important drivers of burned area prediction; this was common to the linear family (stepAIC) and for RF and XGBoost (using the variable importance plots above).
-* So, based on the selected variables common to the tree and linear family, we find that the burned area is predominantly dependent on temperature, wind and relative humidity - these findings are in line with results in [1].
-* However, additionally, we found DC to be an important predictor:
-* The SVM and k-NN models show decent performance in terms of RMSE, but have lower interpretability.
+* Temperature, wind and relative humidity were both found to be important predictors; this was common to the linear family (stepAIC) and for RF and XGBoost (using the variable importance plots above). These findings are in line with results in [1].
+* However, we additionally found DC - Drought Code - to be an important predictor - this indicates the seasonal drought effects on forest fuels. 
+* The SVM models shows decent performance in terms of RMSE, but have lower interpretability.
+* The best results are using k-NN, and the stacked ensemble too. However, this is because the stacked ensemble defaults to results of k-NN. We may get more improvements from a stacked model if we combine k-NN with another model of similar RMSE.
 
-* The best and similar results obtained are by using SVM, KNN or a combination of both.
 ```{r results table, results = 'asis', eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
 
 library(knitr)
 
-models <- c("Linear Family (Ridge)", "k-NN", "SVM Linear", "SVM RBF", "RF", "XGBoost", "Ensemble - Manual Stacking")
+models <- c("Ridge", "k-NN", "SVM Linear", "SVM RBF", "RF", "XGBoost", "Ensemble - Manual Stacking")
 rmses <- c(ridge_rmse, knn_rmse, svm_lin_tuned_rmse, svm_rbf_tuned_rmse, rf.rmse, xgb.rmse, manual_stack_rmse)
   
 final_results <- data.frame("Model" = models, "Test RMSE" = rmses)
@@ -498,10 +497,11 @@ kable(final_results, caption = "Model Comparison")
 
 
 # Conclusion and Discussion
-
 * Due to the small size of the dataset and the skew towards small forest fires, the results vary noticeably with the train-validation split.
-* As discussed, before this can be dealt with by labeling the datapoints by their severity (small, medium, big) and considering it as multi-class problem.
+* As discussed, before this can be dealt with by labeling the datapoints by their severity (small, medium, big) and considering it as multi-class problem. Sampling techniques like over- or under-sampling could also then be applied to the training set.
 * For pro-active measures, weather forecasts could be used instead to predict the occurrence and burned area of forest fires in the future.
+* RMSE is more sensitive to outliers. Using another metric, like Mean Absolute Deviance (MAD) may be better for this dataset and problem.
+* Though taking log transformations may give better results for regression problems, it didn't have much impact in this case - possibly because we removed some of the extreme outliers first.
 
 # References
 
