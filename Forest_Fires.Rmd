@@ -296,8 +296,9 @@ k.opt = ks[which.min(mse.test)]
 
 #KNN regression
 knn_pred = knn.reg(train_knn, test_knn, train_knn$area, k=k.opt)
-knn_rmse = rmse(test_knn$area, as.numeric(denormalize(knn_pred$pred,min(area_ha), max(area_ha))))
-knn_rmse 
+
+knn_rmse = rmse(denormalize(test_knn$area, min(area_ha[test.index]), max(area_ha[test.index])), as.numeric(denormalize(knn_pred$pred,min(area_ha[test.index]), max(area_ha[test.index]))))
+knn_rmse # 7.8
 ```
 
 
@@ -312,38 +313,44 @@ test_data = data_norm[-train.index,]
 #Linear kernel
 svm_linear = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
-pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha), max(area_ha)))
-svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
-svm_lin_rmse
+
+pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha[test.index]), max(area_ha[test.index])))
+svm_lin_rmse = rmse(denormalize(test_data$area, min(area_ha[test.index]), max(area_ha[test.index])), pred.linear.denormalized)
+svm_lin_rmse # 9.34
+
 
 #Tuning linear kernel
 tune_linear = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='linear',
                        ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_linear = tune_linear$best.model
 tuned_linear_pred = predict(tuned_linear, test_data) 
-tuned.pred.linear.denormalized = as.numeric(denormalize(tuned_linear_pred,min(area_ha), max(area_ha)))
-svm_lin_tuned_rmse = rmse(test_data$area, tuned.pred.linear.denormalized)
+tuned.pred.linear.denormalized = as.numeric(denormalize(tuned_linear_pred,min(area_ha[test.index]), max(area_ha[test.index])))
+svm_lin_tuned_rmse = rmse(denormalize(test_data$area, min(area_ha[test.index]), max(area_ha[test.index])), pred.linear.denormalized)
 svm_lin_tuned_rmse # 
 
 
 #RBF kernel
 svm_rbf = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'radial', cost = 1)
 pred.rbf = predict(svm_rbf, test_data)
-pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(area_ha), max(area_ha)))
-svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
-svm_rbf_rmse # 7.6
+
+pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(area_ha[test.index]), max(area_ha[test.index])))
+svm_rbf_rmse = rmse(denormalize(test_data$area, min(area_ha[test.index]), max(area_ha[test.index])), pred.rbf.denormalized)
+svm_rbf_rmse # 9.3
+
 
 #Tuning RBF kernel
 tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
-tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha), max(area_ha)))
-svm_rbf_tuned_rmse = rmse(test_data$area, tuned.pred.rbf.denormalized)
+tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha[test.index]), max(area_ha[test.index])))
+svm_rbf_tuned_rmse = rmse(denormalize(test_data$area, min(area_ha[test.index]), max(area_ha[test.index])), tuned.pred.rbf.denormalized)
 svm_rbf_tuned_rmse #
 
 ```
-We also tried polynomial and sigmoid kernels, but came to conclusion that linear and RBF kernels outperform them with this data.
+For both KNN and SVM we first tried predicting log_area, which turned out yielding generally low accuracies. We believe this is due to KNN and SVM being distance depended algorithms, and so ran the models without logarithmic transformation in the end.
+
+For SVM, we also tried polynomial and sigmoid kernels, but came to conclusion that linear and RBF kernels outperform them with this data. Out of these models, KNN provides the lowest RMSE, with both SVM radial and linear kernels close behind. 
 
 ## Random Forest
 ```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
