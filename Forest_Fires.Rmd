@@ -458,7 +458,7 @@ manual_stack_rmse
 
 # Results and Model Comparison
 * Temperature, wind and relative humidity were both found to be important predictors; this was common to the linear family (stepAIC) and for RF and XGBoost (using the variable importance plots above). These findings are in line with results in [1].
-* However, we additionally found DC - Drought Code - to be an important predictor - this indicates the seasonal drought effects on forest fuels. 
+* However, we additionally found DMC (Duff Moisture Code) and DC (Drought Code) to be important predictors - these indicate the moisture content in moderate duff layers (decomposing organic material) and the seasonal drought effects on forest fuels respectively. But in [1], neither of these were used in the final models.
 * The SVM models shows decent performance in terms of RMSE, but have lower interpretability compared to models from tree or linear families.
 * The best results are using k-NN, and the stacked ensemble too. However, this is because the stacked ensemble defaults to results of k-NN. We may get significant improvements from a stacked model if we combine k-NN with another model of similar RMSE.
 
@@ -467,7 +467,7 @@ manual_stack_rmse
 library(knitr)
 
 models <- c("Ridge", "k-NN", "SVM Linear", "RF", "XGBoost", "Manual Stacking")
-rmses <- c(ridge_rmse, knn_rmse, svm_lin_rmse, rf.rmse, xgb.rmse, manual_stack_rmse)
+rmses <- c(ridge.rmse, knn_rmse, svm_lin_rmse, rf.rmse, xgb.rmse, manual_stack_rmse)
   
 final_results <- data.frame("Model" = models, "Test RMSE" = rmses)
 
@@ -476,8 +476,8 @@ kable(final_results, caption = "Model Comparison")
 
 
 # Conclusion and Discussion
-* Due to the small size of the dataset and the skew towards small forest fires, the results vary noticeably with the train-validation split.
-* As discussed before, this can be dealt with by labeling the datapoints by their severity (small, medium, big) and considering it as multi-class problem. Sampling techniques like over- or under-sampling could also then be applied to the training set. 
+* Due to the small size of the dataset and the skew towards small forest fires, the results vary noticeably with the train-validation split and may not be as accurate as possible.
+* One way to deal with this is by labeling the datapoints by their severity (small, medium, big, or small/others) and considering it as multi-class problem. Sampling techniques like over- or under-sampling could also then be applied to the training set. 
 * For pro-active measures, weather forecasts could be used instead to predict the occurrence and burned area of forest fires in the future.
 * RMSE is more sensitive to outliers. Using another metric, like Mean Absolute Deviance (MAD) may be better for this dataset and problem.
 * Though taking log transformations may give better results for regression problems, it didn't have much impact in this case - possibly because we removed some of the extreme outliers first.
