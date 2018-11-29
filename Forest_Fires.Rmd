@@ -24,7 +24,7 @@ comments must be put in an HTML comment form
 
 ```{r set-options, echo=FALSE, cache=FALSE}
 options(width = 100)  # set output width, turn off scientific notation for big numbers
-knitr::opts_chunk$set(cache = TRUE) # include=FALSE
+#knitr::opts_chunk$set(cache = TRUE) # include=FALSE
 ```
 
 # Introduction
@@ -510,7 +510,6 @@ stack_accuracy
 
 
 ## Discussion
-
 
 # Conclusion
 * It is difficult to predict the exact area which would be affected by a forest fire since our data consists of a huge range of area, and small fires tend to be more frequent.
