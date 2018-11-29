@@ -308,7 +308,7 @@ test_data = data_norm[-train.index,]
 svm_linear = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
 pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha), max(area_ha)))
-svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
+svm_lin_rmse = rmse(as.numeric(denormalize(test_data$area,min(area_ha),max(area_ha))), pred.linear.denormalized)
 svm_lin_rmse # 7.05
 
 #Tuning linear kernel
@@ -317,7 +317,7 @@ tune_linear = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kern
 tuned_linear = tune_linear$best.model
 tuned_linear_pred = predict(tuned_linear, test_data) 
 tuned.pred.linear.denormalized = as.numeric(denormalize(tuned_linear_pred,min(area_ha), max(area_ha)))
-svm_lin_tuned_rmse = rmse(test_data$area, tuned.pred.linear.denormalized)
+svm_lin_tuned_rmse = rmse(as.numeric(denormalize(test_data$area,min(area_ha),max(area_ha))), tuned.pred.linear.denormalized)
 svm_lin_tuned_rmse # 
 
 
@@ -325,7 +325,7 @@ svm_lin_tuned_rmse #
 svm_rbf = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'radial', cost = 1)
 pred.rbf = predict(svm_rbf, test_data)
 pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(area_ha), max(area_ha)))
-svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
+svm_rbf_rmse = rmse(as.numeric(denormalize(test_data$area,min(area_ha),max(area_ha))), pred.rbf.denormalized)
 svm_rbf_rmse # 7.6
 
 #Tuning RBF kernel
@@ -334,7 +334,7 @@ tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel=
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
 tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha), max(area_ha)))
-svm_rbf_tuned_rmse = rmse(test_data$area, tuned.pred.rbf.denormalized)
+svm_rbf_tuned_rmse = rmse(as.numeric(denormalize(test_data$area,min(area_ha),max(area_ha))), tuned.pred.rbf.denormalized)
 svm_rbf_tuned_rmse #
 
 #We also tried Polynomial kernel and Sigmoid kernel, but came to conclusion that Linear and Radial kernels outperform them with this data.
