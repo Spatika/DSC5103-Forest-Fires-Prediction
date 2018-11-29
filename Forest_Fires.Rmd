@@ -158,9 +158,6 @@ summary(data_norm)
 ## Train-Validation Split
 Next, we will prepare the training and test dataset.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-#shuffle data 
-set.seed(17)
-data_norm = data_norm[sample(1:nrow(data_norm)),]
 
 # split training and test data 80/20
 train.index <- createDataPartition(data_norm$area, p = 0.8, list = FALSE)
