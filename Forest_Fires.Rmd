@@ -87,7 +87,9 @@ summary(data)
 ## Distribution of Target Class
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 ggplot(data,aes(data$area)) + geom_histogram()
+
 ```
+
 We can see that the data is heavily skewed towards small forest fires. There are 247 entries with area = 0, for incidents where the resulting burned area was < $100 m^2$. A logarithmic transofrmation of area might be useful in this case, and we can add 1 to the target column first since $ln(0)$ approaches negative infinity. 
 
 ## Some Visualizations
@@ -113,7 +115,9 @@ pairs(dplyr::select(data,c('rain', 'wind', 'temp', 'RH', 'area', 'DC', 'ISI', 'F
 # day/month wise incidents
 plot(data$day, col='purple')
 plot(data$month, col='purple')
+
 ```
+
 There are more incidents on weekends - Friday/Sat/Sun, it might mean that campers vactioning might have caused/spotted fires.
 
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
@@ -252,7 +256,7 @@ rmse(test_pred_area_lasso, data[test.index,'area'])
 ```
 
 ## k-Nearest Neighbours Regression
-```{r}
+```{r knn, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 library(onehot)
 library(class)
 library(FNN)
@@ -295,7 +299,7 @@ knn_rmse # 7.45
 For both k-NN and SVM we first tried predicting log_area, which turned out yielding generally low accuracies. We believe this is due to k-NN and SVM being distance depended algorithms, and so ran the models without logarithmic transformation in the end.
 
 For SVM, we also tried polynomial and sigmoid kernels, but came to conclusion that linear and RBF kernels outperform them with this data. Out of these models, k-NN provides the lowest RMSE, with both SVM radial and linear kernels close behind. 
-```{r}
+```{r svm, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 library(e1071)
 
