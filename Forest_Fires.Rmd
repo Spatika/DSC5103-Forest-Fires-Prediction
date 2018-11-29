@@ -38,7 +38,7 @@ We also have DMC, DC, ISI and FFMC are components of the Canadian Forest Fire We
 
 Spatio-temporal data includes the month and day of the week that the incident occurred, and X and Y co-ordinates of the incident with respect to the park. As noted in [1], smaller fires are much more frequent. This is the case in this dataset, as well as with incidences of wildfires around the world, making this a difficult regression problem.
 
-## Problem 
+## Problem and Metric
 
 We work on the following regression problem:
 
@@ -47,17 +47,17 @@ We work on the following regression problem:
     + This prediction can provide instant feedback to the appropriate diaster response teams.
     + It could also be re-framed as a multi-class classification problem, by dividing the incidents based on severity - Small, Medium, Large - and predicting this, rather than the absoulute burned area.
 
+As this is a regression problem, our main evaluation metric is "test" (or validation) RMSE. 
+
 ## Motivation
 The environmental damage, financial and infratstructure loss from forest fires (or wildfires) can be staggering. Reports from CoreLogic, a property and consumer information provider, estimate that the loss from the 2018 California Wildfires is between 15 and 19 billion USD [3]. With forest fires sweeping the globe and worsening forest fire seasons [4], there is need for a tool such as this to improve firefighting resource management and disaster response. For example, when there are simultaneous occurrences of wildfires, we would be able to prioritize and allocate resources appropriately: ground crew could respond to fires judged to be "smaller", with air support diverted to locations of larger fires.
 
-## Evaluation Metrics
-As this is a regression problem, our main evaluation metric is "test" (or validation) RMSE. We also consider MAD - Mean Absolute Devaince. The "test" set is 20% of the original data.
 
 ## Literature Review
 The frame of reference for our regression task is work by *Cortez, P., & Morais, A. D. J. R. (2007)*. They compared performance of SVM, NN and multiple linear regression and RF from the 'rminer' package, with the best performance from SVM using just the four weather variables - rain, wind, temperature and humidity. While this dataset hasn't been studied extensively, similar work in this domain has been done by  *Özbayoğlu, A. M., & Bozer, R. (2012)* [5]. They predicted burned area in hectares, as well as the size-class of the fire as big, medium or small, using SVM and multi-layer perceptrons, with data from 7,920 forest fires in Turkey between 2000 and 2009 (this dataset wasn't accessible to us). In addition to weather and meteorological data, they used geographic features like the type of trees and number of trees per unit area.
 
 # Exploratory Data Analysis
-We did some initial EDA and visualization to get an idea of our next steps: the required data pre-processing.
+We did some initial EDA and visualization to get a better idea of our next steps and the required data pre-processing.
 
 ## Schema
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
@@ -118,19 +118,23 @@ ggplot(data, aes(x=data$day,data$area)) + geom_boxplot(outlier.shape=NA) +
 # Data Preparation
 
 ## Outlier Detection
-We see from the box plot below that there are 63 outliers (value outside 1.5 times the inter-quartile range) that may skew our results. These are removed, so that we are predicting burned areas of smaller to medium forest fires. This is reasonable, since these are the more frequently encountered ones.
+We see from the boxplot below that there are some outliers that may skew our results. These are removed, so that we are predicting burned areas of smaller to medium forest fires. This is reasonable, since those are the more frequently encountered ones in real-life scenarios as well, and the ones for which resource prioritization may matter more. We are left with 501 observations after this.
 
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 boxplot(data$area)
 outlier_values <- boxplot.stats(data$area)$out
-# We decided to remove burnt areas more than 200, by doing this we remove only 5 major outliers from the data set and keep rest.
-data = dplyr::filter(data, data$area<200)
+
+# we decided to remove burnt areas more than 100
+# by doing this we remove only 11 major outliers from the data set and are keeping the rest
+data = dplyr::filter(data, data$area < 100)
 boxplot(data$area)
-#removing months wiht 1 or 2 records to avoid prediction issues
+
+# removing months with 1 or 2 records to avoid prediction issues
 data <- data[!(data$month=='jan' | data$month=='nov' | data$month=='may'),]
 ```
 
 ## Log Transformation
+Since the data is still skewed towards very small fires, we take the log transformation as mentioned before to improve symmetry.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 data$log_area <- log(data$area + 1)
 
@@ -185,10 +189,6 @@ set.seed(17)
 train.index <- createDataPartition(data$log_area, p = 0.8, list = FALSE)
 test.index <- -train.index
 
-# set.seed(1)
-# N <- nrow(data)
-# train.index <- sample(1:N, round(N*0.8))
-# test.index <- - train.index
 ```
 
 Separating the data for GBM use:
@@ -203,12 +203,6 @@ dtrain <- xgb.DMatrix(data=x.train, label=y.train)
 
 x.test <- model.matrix(log_area ~ ., data=data[test.index, ])[ ,-11]
 y.test <- data[test.index, "log_area"]
-
-```
-
-
-# Feature Engineering/Creation
-```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 ```
 
@@ -228,7 +222,7 @@ glm.diag.plots(model_lm)
 
 # inverse log - 1
 test_pred_area_lm <- exp(predict(model_lm, data[test.index,])) - 1
-rmse(test_pred_area_lm, area_ha[test.index]) # 13.27
+rmse(test_pred_area_lm, area_ha[test.index]) 
 
 ##############
 ## STEP AIC ##
@@ -250,7 +244,7 @@ lam_lasso = model_lasso$lambda.min
 
 # TEST PREDICTIONS 
 test_pred_area_lasso = exp(predict(model_lasso, s=lam_lasso, newdata = data[test.index,], exact=TRUE)) - 1
-rmse(test_pred_area_lasso, area_ha[test.index]) # ~13
+rmse(test_pred_area_lasso, area_ha[test.index])
 
 
 ###########
@@ -263,7 +257,7 @@ lam_ridge = model_ridge$lambda.min
 
 # TEST PREDICTIONS 
 test_pred_area_ridge = exp(predict(model_ridge, s=lam_ridge, data[test.index,], exact=TRUE)) - 1
-rmse(test_pred_area_ridge, area_ha[test.index])  # ~13
+rmse(test_pred_area_ridge, area_ha[test.index])  
 
 ```
 
@@ -347,9 +341,8 @@ tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha)
 svm_rbf_tuned_rmse = rmse(test_data$area, tuned.pred.rbf.denormalized)
 svm_rbf_tuned_rmse #
 
-#We also tried Polynomial kernel and Sigmoid kernel, but came to conclusion that Linear and Radial kernels outperform them with this data.
 ```
-
+We also tried polynomial and sigmoid kernels, but came to conclusion that linear and RBF kernels outperform them with this data.
 
 ## Random Forest
 ```{r randomforest, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
@@ -371,14 +364,19 @@ set.seed(12345)
 model.rf <- randomForest(log_area ~ ., data = data, subset=train.index, ntree=501, mtry=1)
 plot(model.rf)
 
-# predict
+# predict on train set
+pred.rf.train <- predict(model.rf, newdata=data[train.index,]) 
+
+# predict on test set
 pred.rf <- predict(model.rf, newdata=data[test.index,]) 
 
 # inverse log - 1
+pred.rf.train <- exp(pred.rf.train) - 1
 pred.rf <- exp(pred.rf) - 1
 
-# rmse in test data
-rmse(pred.rf, area_ha[test.index]) # 13.5
+# rmse in train and test data
+rmse(pred.rf.train, area_ha[train.index]) 
+rmse(pred.rf, area_ha[test.index])
 ```
 
 ## XGBoost
@@ -390,7 +388,7 @@ rmse(pred.rf, area_ha[test.index]) # 13.5
 # subsample.opt <- 1
 # colsample.opt <- 1
 # nrounds.opt <- 134
-# 
+
 max_depth.opt <- 1
 eta.opt <- 0.01
 subsample.opt <- 1
@@ -400,13 +398,19 @@ nrounds.opt <- 287
 set.seed(12345)
 model.xgb <- xgboost(data=dtrain, objective="reg:linear", nrounds=nrounds.opt, max_depth = max_depth.opt, eta=eta.opt, subsample=subsample.opt, colsample_bytree=colsample.opt , verbose=0)
 
+# train predict 
+pred.xgb.train <- predict(model.xgb, x.train)
+
 # predict
 pred.xgb <- predict(model.xgb, x.test)
 
 # inverse log
 pred.xgb <- exp(pred.xgb) - 1
+pred.xgb.train <- exp(pred.xgb.train) - 1
+
 
 # rmse
+rmse(pred.xgb.train, area_ha[train.index]) # ~13.415
 rmse(pred.xgb, area_ha[test.index]) # ~13.415
 ```
 
@@ -524,5 +528,5 @@ stack_accuracy # 31.47
 
 4. Vidal, J. (2018, July 28). Fire, Fire Everywhere: The 2018 Global Wildfire Season Is Already Disastrous. Retrieved from https://www.huffingtonpost.in/entry/fire-fire-everywhere-the-2018-global-wildfire-season-is-already-disastrous_us_5b5a1271e4b0de86f494ed28
 
-5. ?zbayoglu, A. M., & Bozer, R. (2012). Estimation of the burned area in forest fires using computational intelligence techniques. Procedia Computer Science, 12, 282-287.
+5. Ozbayoglu, A. M., & Bozer, R. (2012). Estimation of the burned area in forest fires using computational intelligence techniques. Procedia Computer Science, 12, 282-287.
 
