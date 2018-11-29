@@ -291,13 +291,13 @@ train_data = data_norm[train.index,]
 test_data = data_norm[-train.index,]
 
 #linear kernel
-svm_linear = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'linear', cost = 1)
+svm_linear = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
 pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(data$area), max(data$area)))
 svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
 svm_lin_rmse # 7.4
 
-tune_linear = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='linear',
+tune_linear = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='linear',
                        ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_linear = tune_linear$best.model
 tuned_linear_pred = predict(tuned_linear, test_data) 
@@ -321,13 +321,13 @@ svm_lin_tuned_rmse # 14.8
 #svm_poly_tuned_rmse # 30.8
 
 #RBF kernel
-svm_rbf = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'radial', cost = 1)
+svm_rbf = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'radial', cost = 1)
 pred.rbf = predict(svm_rbf, test_data)
 pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(data$area), max(data$area)))
 svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
 svm_rbf_rmse # 7.6
 
-tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='radial',
+tune_rbf = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
@@ -358,26 +358,29 @@ svm_rbf_tuned_rmse # 17.5
 library("randomForest")
 
 # tune random forest (mtry) manually
-mse.rfs <- rep(0, 12) # repeat '0' 12 times
+mse.rfs <- rep(0, 10) # repeat '0' 10 times
 
-for(m in 1:12){
+for(m in 1:10){
     set.seed(12345)
-    rf <- randomForest(area ~ ., data = data, subset = train.index, ntree=501, mtry=m)
+    rf <- randomForest(log_area ~ ., data = data, subset = train.index, ntree=501, mtry=m)
     mse.rfs[m] <- rf$mse[501]
 }
 
-plot(1:12, mse.rfs, type = "b", xlab="mtry", ylab="OOB Error")
+plot(1:10, mse.rfs, type = "b", xlab="mtry", ylab="OOB Error")
 
 # fit a random forest model
 set.seed(12345)
-model.rf <- randomForest(area ~ ., data = data, subset=train.index, ntree=501, mtry=1)
+model.rf <- randomForest(log_area ~ ., data = data, subset=train.index, ntree=501, mtry=1)
 plot(model.rf)
 
 # predict
 pred.rf <- predict(model.rf, newdata=data[test.index,]) 
 
+# inverse log - 1
+pred.rf <- exp(pred.rf) - 1
+
 # rmse in test data
-rmse(pred.rf, data[test.index,"area"]) # ~29.21
+rmse(pred.rf, area_ha[test.index]) # ~27.80
 ```
 
 ## XGBoost
@@ -396,8 +399,11 @@ model.xgb <- xgboost(data=dtrain, objective="reg:linear", nrounds=nrounds.opt, m
 # predict
 pred.xgb <- predict(model.xgb, x.test)
 
+# inverse log
+pred.xgb <- exp(pred.xgb) - 1
+
 # rmse
-rmse(pred.xgb, y.test) # ~36.87052
+rmse(pred.xgb, area_ha[test.index]) # ~28.02
 ```
 
 ### XGBoost Variable Importance Plot
