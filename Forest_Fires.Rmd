@@ -438,7 +438,7 @@ manual_stack_model <- glm(area ~ ., data = stack_train_data)
 pred_stack_manual <- predict(manual_stack_model, stack_test_data)
 
 ## RMSE of Manual Stack Model
-pred_stack_manual_denormalized = denormalize(pred_stack_manual,min(data$area), max(data$area))
+pred_stack_manual_denormalized = denormalize(pred_stack_manual, min(data$area), max(data$area))
 manual_stack_rmse = rmse(pred_stack_manual_denormalized, data[test.index,'area'])
 manual_stack_rmse 
 
@@ -455,8 +455,8 @@ manual_stack_rmse
 
 library(knitr)
 
-models <- c("Ridge", "k-NN", "SVM Linear", "SVM RBF", "RF", "XGBoost", "Manual Stacking")
-rmses <- c(ridge_rmse, knn_rmse, svm_lin_tuned_rmse, svm_rbf_tuned_rmse, rf.rmse, xgb.rmse, manual_stack_rmse)
+models <- c("Ridge", "k-NN", "SVM Linear", "RF", "XGBoost", "Manual Stacking")
+rmses <- c(ridge_rmse, knn_rmse, svm_lin_rmse, rf.rmse, xgb.rmse, manual_stack_rmse)
   
 final_results <- data.frame("Model" = models, "Test RMSE" = rmses)
 
