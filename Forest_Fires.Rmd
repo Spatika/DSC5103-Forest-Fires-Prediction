@@ -476,8 +476,8 @@ kable(final_results, caption = "Model Comparison")
 
 
 # Conclusion and Discussion
-* Due to the small size of the dataset and the skew towards small forest fires, the results vary noticeably with the train-validation split and may not be as accurate as possible.
-* One way to deal with this is by labeling the datapoints by their severity (small, medium, big, or small/others) and considering it as multi-class problem. Sampling techniques like over- or under-sampling could also then be applied to the training set. 
+* Due to the small size of the dataset and the skew towards small forest fires, the results may not be as accurate as possible.
+* One way to deal with this is by labeling the datapoints by their severity (small, medium, big, or small/others) and considering it as a classification problem. Sampling techniques like over- or under-sampling could also then be applied to the training set. 
 * For pro-active measures, weather forecasts could be used instead to predict the occurrence and burned area of forest fires in the future.
 * RMSE is more sensitive to outliers. Using another metric, like Mean Absolute Deviance (MAD) may be better for this dataset and problem.
 * Though taking log transformations may give better results for regression problems, it didn't have much impact in this case - possibly because we removed some of the extreme outliers first.
