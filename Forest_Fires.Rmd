@@ -54,7 +54,7 @@ The environmental damage, financial and infratstructure loss from forest fires (
 
 
 ## Literature Review
-The frame of reference for our regression task is work by *Cortez, P., & Morais, A. D. J. R. (2007)*. They compared performance of SVM, NN and multiple linear regression and RF from the 'rminer' package, with the best performance from SVM using just the four weather variables - rain, wind, temperature and humidity. While this dataset hasn't been studied extensively, similar work in this domain has been done by  *Özbayoğlu, A. M., & Bozer, R. (2012)* [5]. They predicted burned area in hectares, as well as the size-class of the fire as big, medium or small, using SVM and multi-layer perceptrons, with data from 7,920 forest fires in Turkey between 2000 and 2009 (this dataset wasn't accessible to us). In addition to weather and meteorological data, they used geographic features like the type of trees and number of trees per unit area.
+The frame of reference for our regression task is work by *Cortez, P., & Morais, A. D. J. R. (2007)*. They compared performance of SVM, NN and multiple linear regression and RF from the 'rminer' package, with the best performance from SVM using just the four weather variables - rain, wind, temperature and humidity. While this dataset hasn't been studied extensively, similar work in this domain has been done by  *�zbayoglu, A. M., & Bozer, R. (2012)* [5]. They predicted burned area in hectares, as well as the size-class of the fire as big, medium or small, using SVM and multi-layer perceptrons, with data from 7,920 forest fires in Turkey between 2000 and 2009 (this dataset wasn't accessible to us). In addition to weather and meteorological data, they used geographic features like the type of trees and number of trees per unit area.
 
 # Exploratory Data Analysis
 We did some initial EDA and visualization to get a better idea of our next steps and the required data pre-processing.
@@ -133,28 +133,11 @@ boxplot(data$area)
 data <- data[!(data$month=='jan' | data$month=='nov' | data$month=='may'),]
 ```
 
-## Log Transformation
-Since the data is still skewed towards very small fires, we take the log transformation as mentioned before to improve symmetry.
-```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-data$log_area <- log(data$area + 1)
-
-# new distribution
-summary(data$log_area)
-ggplot(data,aes(data$log_area)) + geom_histogram()
-```
-
-
 ## Feature Selection
 The 'X' and 'Y' attributes are coordinates in the 9x9 grid representing the area of Portugal's Montesinho Park. Specific to this situation - doesn't make sense to use for a generalized tool, and are anyway not found to be crucial in predicting burned area.
-```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
-data0 <- data # old data with all features
-
-data <- dplyr::select(data, -X, -Y)
-summary(data)
-```
 
 ## Normalization
-For SVM and k-NN, we use normalized data on the 0-1 scale. Area is also 0-1 normalized in this case, instead of log transformed. <insert explanation here>
+For SVM and k-NN, we use normalized data on the 0-1 scale. Also for proper analysis and model comparison we will use normalized data for all models.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 
 normalize_c = function(x) {
@@ -165,15 +148,10 @@ denormalize <- function(x, min_x, max_x) {
   return(x * (max_x - min_x) + min_x) 
 }
 
-# Xs - normalize all predictors + area, for SVM and KNN
-data_norm <- dplyr::select(data, -log_area)
-data_norm <- data_norm %>% mutate_at(names(Filter(is.numeric, data_norm)), normalize_c)
+# Xs - normalize all predictors
+data_norm <- data %>% mutate_at(names(Filter(is.numeric, data)), normalize_c) %>% dplyr::select(-c(X,Y))
 
 summary(data_norm)
-
-# remove 'area' from data for other models so it isn't use as an additional predictor
-area_ha <- data$area # original area
-data <- dplyr::select(data, -area)
 
 ```
 
@@ -182,12 +160,10 @@ Next, we will prepare the training and test dataset.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 #shuffle data 
 set.seed(17)
-data = data[sample(1:nrow(data)),]
+data_norm = data_norm[sample(1:nrow(data_norm)),]
 
 # split training and test data 80/20
-set.seed(17)
-
-train.index <- createDataPartition(data$log_area, p = 0.8, list = FALSE)
+train.index <- createDataPartition(data_norm$area, p = 0.8, list = FALSE)
 test.index <- -train.index
 
 ```
@@ -197,13 +173,13 @@ Separating the data for GBM use:
 
 library(xgboost)
 # convert data for xgboost - onehot encoding is automatically done 
-x.train <- model.matrix(log_area ~ ., data=data[train.index, ])[, -11]
-y.train <- data[train.index, "log_area"]
+x.train <- model.matrix(area ~ ., data_norm[train.index, ])[, -11]
+y.train <- data_norm[train.index, "area"]
 
 dtrain <- xgb.DMatrix(data=x.train, label=y.train)
 
-x.test <- model.matrix(log_area ~ ., data=data[test.index, ])[ ,-11]
-y.test <- data[test.index, "log_area"]
+x.test <- model.matrix(area ~ ., data_norm[test.index, ])[ ,-11]
+y.test <- data_norm[test.index, "area"]
 
 ```
 
@@ -215,15 +191,14 @@ library(glmnetUtils)
 library(MASS)
 library(boot)
 
-model_lm = glm(log_area ~ .,
-               data=data[train.index,], family = 'gaussian')
+model_lm = glm(area ~ .,
+               data=data_norm[train.index,], family = 'gaussian')
 summary(model_lm)
 glm.diag.plots(model_lm)
 
-
-# inverse log - 1
-test_pred_area_lm <- exp(predict(model_lm, data[test.index,])) - 1
-rmse(test_pred_area_lm, area_ha[test.index]) 
+# denormalize prediction
+test_pred_area_lm <- denormalize(predict(model_lm, data_norm[test.index,]),min(data$area),max(data$area))
+rmse(test_pred_area_lm, data[test.index,'area']) 
 
 ##############
 ## STEP AIC ##
@@ -231,34 +206,37 @@ rmse(test_pred_area_lm, area_ha[test.index])
 model_step <- stepAIC(model_lm, direction = 'both')
 model_step
 
-test_pred_area_step <- exp(predict(model_step, newdata = data[test.index,])) - 1
-rmse(test_pred_area_step, area_ha[test.index])
+test_pred_area_step <- denormalize(predict(model_step, newdata = data_norm[test.index,]),
+                                   min(data$area),max(data$area))
+rmse(test_pred_area_step, data[test.index,'area'])
+
+###########
+## RIDGE ##
+###########
+model_ridge = cv.glmnet(area~.,
+               data=data_norm[train.index,], nfolds=10, use.model.frame = T, alpha = 0)
+
+lam_ridge = model_ridge$lambda.min
+
+# TEST PREDICTIONS 
+test_pred_area_ridge = denormalize(predict(model_ridge, s=lam_ridge, data_norm[test.index,],
+                                           exact=TRUE), min(data$area),max(data$area))
+rmse(test_pred_area_ridge, data[test.index,'area'])  
 
 ###########
 ## LASSO ##
 ###########
 
-model_lasso = cv.glmnet(log_area~.,
-               data=data[train.index,], nfolds=10, use.model.frame = T, alpha = 1)
+model_lasso = cv.glmnet(area~.,
+               data=data_norm[train.index,], nfolds=10, use.model.frame = T, alpha = 1)
 
 lam_lasso = model_lasso$lambda.min
 
 # TEST PREDICTIONS 
-test_pred_area_lasso = exp(predict(model_lasso, s=lam_lasso, newdata = data[test.index,], exact=TRUE)) - 1
-rmse(test_pred_area_lasso, area_ha[test.index])
+test_pred_area_lasso = denormalize(predict(model_lasso, s=lam_lasso,  data_norm[test.index,], exact=TRUE),
+                           min(data$area),max(data$area)) 
+rmse(test_pred_area_lasso, data[test.index,'area'])
 
-
-###########
-## RIDGE ##
-###########
-model_ridge = cv.glmnet(log_area~.,
-               data=data[train.index,], nfolds=10, use.model.frame = T, alpha = 0)
-
-lam_ridge = model_ridge$lambda.min
-
-# TEST PREDICTIONS 
-test_pred_area_ridge = exp(predict(model_ridge, s=lam_ridge, data[test.index,], exact=TRUE)) - 1
-rmse(test_pred_area_ridge, area_ha[test.index])  
 
 ```
 
@@ -297,7 +275,7 @@ k.opt = ks[which.min(mse.test)]
 #KNN regression
 knn_pred = knn.reg(train_knn, test_knn, train_knn$area, k=k.opt)
 
-knn_rmse = rmse(denormalize(test_knn$area, min(area_ha[test.index]), max(area_ha[test.index])), as.numeric(denormalize(knn_pred$pred,min(area_ha[test.index]), max(area_ha[test.index]))))
+knn_rmse = rmse(denormalize(knn_pred$pred,min(data$area),max(data$area)), data[test.index,'area'])
 knn_rmse # 7.8
 ```
 
@@ -307,80 +285,46 @@ knn_rmse # 7.8
 
 library(e1071)
 
-train_data = data_norm[train.index,]
-test_data = data_norm[-train.index,]
-
 #Linear kernel
-svm_linear = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'linear', cost = 1)
-pred.linear = predict(svm_linear, test_data)
-<<<<<<< HEAD
-pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha), max(area_ha)))
-svm_lin_rmse = rmse(as.numeric(denormalize(test_data$area,min(area_ha),max(area_ha))), pred.linear.denormalized)
-svm_lin_rmse # 7.05
-||||||| merged common ancestors
-pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha), max(area_ha)))
-svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
-svm_lin_rmse # 7.05
-=======
+svm_linear = svm(area ~ ., data = data_norm[train.index,], kernel = 'linear', cost = 1)
+pred.linear = predict(svm_linear, data_norm[test.index,])
 
-pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha[test.index]), max(area_ha[test.index])))
-svm_lin_rmse = rmse(denormalize(test_data$area, min(area_ha[test.index]), max(area_ha[test.index])), pred.linear.denormalized)
+pred.linear.denormalized = denormalize(pred.linear,min(data$area), max(data$area))
+svm_lin_rmse = rmse(pred.linear.denormalized, data[test.index,'area'])
 svm_lin_rmse # 9.34
 
->>>>>>> d07509be863c637b97ac08605efba38960626325
 
 #Tuning linear kernel
-tune_linear = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='linear',
-                       ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
+tune_linear = tune(svm, area ~.,  data = data_norm[train.index,], kernel='linear',
+                       ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6), 
+                       control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,
+                                              fix = 2/3,nrepeat = 2)))
 tuned_linear = tune_linear$best.model
-tuned_linear_pred = predict(tuned_linear, test_data) 
-<<<<<<< HEAD
-tuned.pred.linear.denormalized = as.numeric(denormalize(tuned_linear_pred,min(area_ha), max(area_ha)))
-svm_lin_tuned_rmse = rmse(as.numeric(denormalize(test_data$area,min(area_ha),max(area_ha))), tuned.pred.linear.denormalized)
-||||||| merged common ancestors
-tuned.pred.linear.denormalized = as.numeric(denormalize(tuned_linear_pred,min(area_ha), max(area_ha)))
-svm_lin_tuned_rmse = rmse(test_data$area, tuned.pred.linear.denormalized)
-=======
-tuned.pred.linear.denormalized = as.numeric(denormalize(tuned_linear_pred,min(area_ha[test.index]), max(area_ha[test.index])))
-svm_lin_tuned_rmse = rmse(denormalize(test_data$area, min(area_ha[test.index]), max(area_ha[test.index])), pred.linear.denormalized)
->>>>>>> d07509be863c637b97ac08605efba38960626325
+tuned_linear_pred = predict(tuned_linear, data_norm[test.index]) 
+tuned.pred.linear.denormalized = denormalize(tuned_linear_pred,min(data$area),max(data$area))
+
+svm_lin_tuned_rmse = rmse(tuned.pred.linear.denormalized, data[test.index,'area'])
 svm_lin_tuned_rmse # 
 
 
 #RBF kernel
-svm_rbf = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'radial', cost = 1)
-pred.rbf = predict(svm_rbf, test_data)
-<<<<<<< HEAD
-pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(area_ha), max(area_ha)))
-svm_rbf_rmse = rmse(as.numeric(denormalize(test_data$area,min(area_ha),max(area_ha))), pred.rbf.denormalized)
-svm_rbf_rmse # 7.6
-||||||| merged common ancestors
-pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(area_ha), max(area_ha)))
-svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
-svm_rbf_rmse # 7.6
-=======
+svm_rbf = svm(area ~ ., data=data_norm[train.index,], kernel = 'radial', cost = 1)
+pred.rbf = predict(svm_rbf, data_norm[test.index,])
 
-pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(area_ha[test.index]), max(area_ha[test.index])))
-svm_rbf_rmse = rmse(denormalize(test_data$area, min(area_ha[test.index]), max(area_ha[test.index])), pred.rbf.denormalized)
+pred.rbf.denormalized = denormalize(pred.rbf,min(data$area),max(data$area))
+svm_rbf_rmse = rmse(pred.rbf.denormalized, data[test.index,'area'])
 svm_rbf_rmse # 9.3
 
->>>>>>> d07509be863c637b97ac08605efba38960626325
 
 #Tuning RBF kernel
-tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='radial',
-                 ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
+tune_rbf = tune(svm, area ~ .,  data = data_norm[train.index,], kernel='radial',
+                 ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), 
+                 control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,
+                                        fix = 2/3,nrepeat = 2)))
 tuned_rbf = tune_rbf$best.model
-tuned_rbf_pred = predict(tuned_rbf, test_data) 
-<<<<<<< HEAD
-tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha), max(area_ha)))
-svm_rbf_tuned_rmse = rmse(as.numeric(denormalize(test_data$area,min(area_ha),max(area_ha))), tuned.pred.rbf.denormalized)
-||||||| merged common ancestors
-tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha), max(area_ha)))
-svm_rbf_tuned_rmse = rmse(test_data$area, tuned.pred.rbf.denormalized)
-=======
-tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha[test.index]), max(area_ha[test.index])))
-svm_rbf_tuned_rmse = rmse(denormalize(test_data$area, min(area_ha[test.index]), max(area_ha[test.index])), tuned.pred.rbf.denormalized)
->>>>>>> d07509be863c637b97ac08605efba38960626325
+tuned_rbf_pred = predict(tuned_rbf, data[test.index,]) 
+tuned.pred.rbf.denormalized = denormalize(tuned_rbf_pred,min(data$area),max(data$area))
+svm_rbf_tuned_rmse = rmse(tuned.pred.rbf.denormalized, data[test.index,'area'])
 svm_rbf_tuned_rmse #
 
 ```
@@ -397,7 +341,7 @@ mse.rfs <- rep(0, 10) # repeat '0' 10 times
 
 for(m in 1:10){
     set.seed(12345)
-    rf <- randomForest(log_area ~ ., data = data, subset = train.index, ntree=501, mtry=m)
+    rf <- randomForest(area ~ ., data = data_norm, subset = train.index, ntree=501, mtry=m)
     mse.rfs[m] <- rf$mse[501]
 }
 
@@ -405,22 +349,22 @@ plot(1:10, mse.rfs, type = "b", xlab="mtry", ylab="OOB Error")
 
 # fit a random forest model
 set.seed(12345)
-model.rf <- randomForest(log_area ~ ., data = data, subset=train.index, ntree=501, mtry=1)
+model.rf <- randomForest(area ~ ., data = data_norm, subset=train.index, ntree=501, mtry=1)
 plot(model.rf)
 
 # predict on train set
-pred.rf.train <- predict(model.rf, newdata=data[train.index,]) 
+pred.rf.train <- predict(model.rf, newdata=data_norm[train.index,]) 
 
 # predict on test set
-pred.rf <- predict(model.rf, newdata=data[test.index,]) 
+pred.rf <- predict(model.rf, newdata=data_norm[test.index,]) 
 
 # inverse log - 1
-pred.rf.train <- exp(pred.rf.train) - 1
-pred.rf <- exp(pred.rf) - 1
+pred.rf.train <- denormalize(pred.rf.train, min(data$area), max(data$area))
+pred.rf <- denormalize(pred.rf, min(data$area), max(data$area))
 
 # rmse in train and test data
-rmse(pred.rf.train, area_ha[train.index]) 
-rmse(pred.rf, area_ha[test.index])
+rmse(pred.rf.train, data_norm[train.index,'area']) 
+rmse(pred.rf, data_norm[test.index,'area'])
 ```
 
 ## XGBoost
@@ -449,12 +393,12 @@ pred.xgb.train <- predict(model.xgb, x.train)
 pred.xgb <- predict(model.xgb, x.test)
 
 # inverse log
-pred.xgb <- exp(pred.xgb) - 1
-pred.xgb.train <- exp(pred.xgb.train) - 1
+pred.xgb <- denormalize(pred.xgb,min(data$area),max(data$area))
+pred.xgb.train <- denormalize(pred.xgb.train,min(data$area),max(data$area))
 
 # rmse
-rmse(pred.xgb.train, area_ha[train.index]) 
-rmse(pred.xgb, area_ha[test.index]) 
+rmse(pred.xgb.train, data[train.index,'area']) 
+rmse(pred.xgb, data[test.index,'area']) 
 ```
 
 ### XGBoost Variable Importance Plot
