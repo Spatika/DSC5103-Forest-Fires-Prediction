@@ -59,7 +59,7 @@ library(corrplot)
 library(ModelMetrics)
 
 # load data
-data <- read.csv(file = "./data/forestfires.csv", stringsAsFactors = T)
+data <- read.csv(file = "forestfires.csv", stringsAsFactors = T)
 summary(data)
 ```
 
@@ -113,6 +113,11 @@ We see from the box plot below that there are 63 outliers (value outside 1.5 tim
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 boxplot(data$area)
 outlier_values <- boxplot.stats(data$area)$out
+# We decided to remove burnt areas more than 200, by doing this we remove only 5 major outliers from the data set and keep rest.
+data = dplyr::filter(data, data$area<200)
+boxplot(data$area)
+#removing months wiht 1 or 2 records to avoid prediction issues
+data <- data[!(data$month=='jan' | data$month=='nov' | data$month=='may'),]
 ```
 
 ## Log Transformation
@@ -161,9 +166,12 @@ data <- dplyr::select(data, -area)
 ## Train-Validation Split
 Next, we will prepare the training and test dataset.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+#shuffle data 
+data = data[sample(1:nrow(data)),]
 
 # split training and test data 80/20
 set.seed(17)
+
 train.index <- createDataPartition(data$log_area, p = 0.8, list = FALSE)
 test.index <- -train.index
 
@@ -207,14 +215,9 @@ model_lm = glm(log_area ~ .,
 summary(model_lm)
 glm.diag.plots(model_lm)
 
-# Cook's statistics shows that few outliers are heavily affecting prediction
-# As shown in the histogram of area, there many values at 0 but few cases with very high area burnt such as 900-1100 ha
-# We can't remove these outliers as these are also cases which we are trying to predict
-
-# Residuals plot shows a very flat, instead of a uniform distribution again because of extreme outlier influence
 
 # inverse log - 1
-test_pred_area_lm <- exp(predict(model_lm, newdata = data[test.index,])) - 1
+test_pred_area_lm <- exp(predict(model_lm, data[test.index,])) - 1
 rmse(test_pred_area_lm, area_ha[test.index]) # 13.27
 
 ##############
