@@ -482,14 +482,14 @@ manual_stack_rmse
 # Results and Model Comparison
 * Temperature, wind and relative humidity were both found to be important predictors; this was common to the linear family (stepAIC) and for RF and XGBoost (using the variable importance plots above). These findings are in line with results in [1].
 * However, we additionally found DC - Drought Code - to be an important predictor - this indicates the seasonal drought effects on forest fuels. 
-* The SVM models shows decent performance in terms of RMSE, but have lower interpretability.
+* The SVM models shows decent performance in terms of RMSE, but have lower interpretability compared to models from tree or linear families.
 * The best results are using k-NN, and the stacked ensemble too. However, this is because the stacked ensemble defaults to results of k-NN. We may get more improvements from a stacked model if we combine k-NN with another model of similar RMSE.
 
 ```{r results table, results = 'asis', eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
 
 library(knitr)
 
-models <- c("Ridge", "k-NN", "SVM Linear", "SVM RBF", "RF", "XGBoost", "Ensemble - Manual Stacking")
+models <- c("Ridge", "k-NN", "SVM Linear", "SVM RBF", "RF", "XGBoost", "Manual Stacking")
 rmses <- c(ridge_rmse, knn_rmse, svm_lin_tuned_rmse, svm_rbf_tuned_rmse, rf.rmse, xgb.rmse, manual_stack_rmse)
   
 final_results <- data.frame("Model" = models, "Test RMSE" = rmses)
