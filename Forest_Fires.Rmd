@@ -181,6 +181,7 @@ data <- dplyr::select(data, -area)
 Next, we will prepare the training and test dataset.
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 #shuffle data 
+set.seed(17)
 data = data[sample(1:nrow(data)),]
 
 # split training and test data 80/20
@@ -296,7 +297,7 @@ k.opt = ks[which.min(mse.test)]
 #KNN regression
 knn_pred = knn.reg(train_knn, test_knn, train_knn$area, k=k.opt)
 knn_rmse = rmse(test_knn$area, as.numeric(denormalize(knn_pred$pred,min(area_ha), max(area_ha))))
-knn_rmse # 7.88
+knn_rmse 
 ```
 
 
@@ -309,14 +310,14 @@ train_data = data_norm[train.index,]
 test_data = data_norm[-train.index,]
 
 #Linear kernel
-svm_linear = svm(area ~ ., data=train_data, kernel = 'linear', cost = 1)
+svm_linear = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
 pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha), max(area_ha)))
 svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
-svm_lin_rmse # 3.19
+svm_lin_rmse
 
 #Tuning linear kernel
-tune_linear = tune(svm, area ~ .  data = train_data, kernel='linear',
+tune_linear = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='linear',
                        ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_linear = tune_linear$best.model
 tuned_linear_pred = predict(tuned_linear, test_data) 
@@ -326,14 +327,14 @@ svm_lin_tuned_rmse #
 
 
 #RBF kernel
-svm_rbf = svm(area ~ ., data=train_data, kernel = 'radial', cost = 1)
+svm_rbf = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'radial', cost = 1)
 pred.rbf = predict(svm_rbf, test_data)
 pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(area_ha), max(area_ha)))
 svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
-svm_rbf_rmse # 3.9
+svm_rbf_rmse # 7.6
 
 #Tuning RBF kernel
-tune_rbf = tune(svm, area ~ .,  data = train_data, kernel='radial',
+tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
@@ -393,7 +394,7 @@ max_depth.opt <- 1
 eta.opt <- 0.01
 subsample.opt <- 1
 colsample.opt <- 0.6
-nrounds.opt <- 287
+nrounds.opt <- 267
 
 set.seed(12345)
 model.xgb <- xgboost(data=dtrain, objective="reg:linear", nrounds=nrounds.opt, max_depth = max_depth.opt, eta=eta.opt, subsample=subsample.opt, colsample_bytree=colsample.opt , verbose=0)
@@ -408,10 +409,9 @@ pred.xgb <- predict(model.xgb, x.test)
 pred.xgb <- exp(pred.xgb) - 1
 pred.xgb.train <- exp(pred.xgb.train) - 1
 
-
 # rmse
-rmse(pred.xgb.train, area_ha[train.index]) # ~13.415
-rmse(pred.xgb, area_ha[test.index]) # ~13.415
+rmse(pred.xgb.train, area_ha[train.index]) 
+rmse(pred.xgb, area_ha[test.index]) 
 ```
 
 ### XGBoost Variable Importance Plot
@@ -459,8 +459,8 @@ stack_accuracy # 30
 ```
 
 # Results and Model Comparison
-* We select RMSE as our performance metric and observe that both __ give us pretty good results as compared to the other models. Hence, we stack the above two models to augment our results. We find that the combination of these also gives a similar positive result.
-* We notice that not all variables are significant in predicting the area (dependent variable) from the correlation plot. Hence we drop all the index and RH and use temp instead which is highly correlated to all. We also drop the X and Y coordinates as these do not seem to affect the area.
+* We test RMSE as our performance metric, we observe that both __ give us pretty good results as compared to the other models. Hence, we stack the above two models to augment our results. We find that the combination of these also gives a similar result.
+* We notice that not all variables are significant in predicting the area (dependent variable) from the correlation plot. Hence we drop all the indices and RH, and instead use temperature.
 
 ```{r ensemble_varimp, eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE, warning=FALSE}
 
@@ -482,13 +482,13 @@ pred_stack_varimp <- exp(pred_stack_varimp) - 1
 
 ## Accuracy and RMSE of Stacking Model
 stack_accuracy <- RMSE(pred_stack_varimp, area_ha[test.index])
-stack_accuracy # 31.47
+stack_accuracy 
 
 ```
 
 
 # Insights
-* The final model using significant variables contains a similar RMSE as compared to using all independent variables. Hence, we can say that the area is indeed dependent on temperature, wind and rain. The other variables do not contribute in predicting the area. 
+* The final model using the important variables produces a similar test RMSE to that observed when using all attributes. Hence, we can say that the burned area is indeed dependent on temperature, wind and rain. The other variables do not contribute much.
 * The best and similar results obtained are by using SVM, KNN or a combination of both.
 
 
