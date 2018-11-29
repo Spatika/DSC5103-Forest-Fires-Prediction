@@ -71,7 +71,7 @@ summary(data$area)
 ```
 We can see that the data is heavily skewed towards small forest fires. There are 247 entries with area = 0, for incidents where the resulting burned area was < 100 m^2. A logarithmic transofrmation of area would be useful in this case, and we can add one to the target column first since ln(0) approaches negative infinity.
 
-## EDA
+## Some Visualizations
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
 # describe(data)
 
@@ -106,6 +106,14 @@ ggplot(data, aes(x=data$day,data$area)) + geom_boxplot(outlier.shape=NA) +
 ```
 
 # Data Preparation
+
+
+## Outlier Detection
+We see from the box plot below that there are 63 outliers (value outside 1.5 times the inter-quartile range) that may skew our results. These are removed.
+```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
+boxplot(data$area)
+outlier_values <- boxplot.stats(data$area)$out
+```
 
 ## Log Transformation
 ```{r eval=TRUE, echo=TRUE, message=FALSE, tidy=TRUE}
@@ -159,6 +167,10 @@ set.seed(17)
 train.index <- createDataPartition(data$log_area, p = 0.8, list = FALSE)
 test.index <- -train.index
 
+# set.seed(1)
+# N <- nrow(data)
+# train.index <- sample(1:N, round(N*0.8))
+# test.index <- - train.index
 ```
 
 Separating the data for GBM use:
@@ -249,18 +261,18 @@ library(class)
 library(FNN)
 library(Metrics)
 
-#encode factors for KNN
+#Encode factors to dummies for KNN
 data_norm$month = as.factor(data_norm$month)
 data_norm$day = as.factor(data_norm$day)
 
 encoder = onehot(data_norm, max_levels = 100)
 knn_data = as.data.frame(predict(encoder, data_norm))
 
-#separate train and test for KNN
+#Separating train and test for KNN
 train_knn = knn_data[train.index,]
 test_knn = knn_data[-train.index,]
 
-#Optimal K
+#Finding out optimal K
 ks = 1:30
 mse.train = numeric(length=length(ks))
 mse.test  = numeric(length=length(ks))
@@ -274,8 +286,7 @@ for (i in seq(along=ks)) {
 
 k.opt = ks[which.min(mse.test)]
 
-#training KNN regression
-
+#KNN regression
 knn_pred = knn.reg(train_knn, test_knn, train_knn$area, k=k.opt)
 knn_rmse = rmse(test_knn$area, as.numeric(denormalize(knn_pred$pred,min(area_ha), max(area_ha))))
 knn_rmse # 11.6
@@ -290,14 +301,15 @@ library(e1071)
 train_data = data_norm[train.index,]
 test_data = data_norm[-train.index,]
 
-#linear kernel
-svm_linear = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'linear', cost = 1)
+#Linear kernel
+svm_linear = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'linear', cost = 1)
 pred.linear = predict(svm_linear, test_data)
 pred.linear.denormalized = as.numeric(denormalize(pred.linear,min(area_ha), max(area_ha)))
 svm_lin_rmse = rmse(test_data$area, pred.linear.denormalized)
 svm_lin_rmse # 7.05
 
-tune_linear = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='linear',
+#Tuning linear kernel
+tune_linear = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='linear',
                        ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:6), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_linear = tune_linear$best.model
 tuned_linear_pred = predict(tuned_linear, test_data) 
@@ -307,13 +319,14 @@ svm_lin_tuned_rmse #
 
 
 #RBF kernel
-svm_rbf = svm(area ~ rain + wind + temp + RH + DC + ISI + FFMC, data=train_data, kernel = 'radial', cost = 1)
+svm_rbf = svm(area ~ rain + wind + temp + RH, data=train_data, kernel = 'radial', cost = 1)
 pred.rbf = predict(svm_rbf, test_data)
 pred.rbf.denormalized = as.numeric(denormalize(pred.rbf,min(area_ha), max(area_ha)))
 svm_rbf_rmse = rmse(test_data$area, pred.rbf.denormalized)
 svm_rbf_rmse # 7.6
 
-tune_rbf = tune(svm, area ~ rain + wind + temp + RH + DC + ISI + FFMC,  data = train_data, kernel='radial',
+#Tuning RBF kernel
+tune_rbf = tune(svm, area ~ rain + wind + temp + RH,  data = train_data, kernel='radial',
                  ranges = list(epsilon = seq(0,1,0.1), cost = 2^(2:8), control = tune.control(sampling = "bootstrap", cross = 5, best.model = TRUE,fix = 2/3,nrepeat = 2)))
 tuned_rbf = tune_rbf$best.model
 tuned_rbf_pred = predict(tuned_rbf, test_data) 
@@ -321,6 +334,7 @@ tuned.pred.rbf.denormalized = as.numeric(denormalize(tuned_rbf_pred,min(area_ha)
 svm_rbf_tuned_rmse = rmse(test_data$area, tuned.pred.rbf.denormalized)
 svm_rbf_tuned_rmse #
 
+#We also tried Polynomial kernel and Sigmoid kernel, but came to conclusion that Linear and Radial kernels outperform them with this data.
 ```
 
 
@@ -437,14 +451,14 @@ stack_accuracy # 30
 
 set.seed(17)
 
-models_varimp <- caretList(log_area ~ temp + wind + rain, data=data_norm[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
+models_varimp <- caretList(log_area ~ temp + wind + rain, data=data[train.index,], metric = 'RMSE', trControl=control, methodList=algos)
 
 models_perf_varimp <- resamples(models)
 modelCor(models_perf_varimp)
 
 stack_lm_varimp <- caretStack(models_varimp, method='lm',  trControl=stack_control)
 
-pred_stack_varimp <- predict(stack_lm_varimp, data_norm[test.index,])
+pred_stack_varimp <- predict(stack_lm_varimp, data[test.index,])
 
 # inverse log - 1
 pred_stack_varimp <- exp(pred_stack_varimp) - 1
@@ -483,6 +497,7 @@ stack_accuracy # 31.47
 
 # Conclusion
 * It is difficult to predict the exact area which would be affected by a forest fire since our data consists of a huge range of area, and small fires tend to be more frequent.
+* Due to the small size of the dataset and the skew towards small forest fires, the results vary noticeably with the train-validation split.
 * We could probably segment the area into different classes of the Severity of Damage (Low, Medium, High and Fatal) and consider it as multi-class problem.
 
 # References
